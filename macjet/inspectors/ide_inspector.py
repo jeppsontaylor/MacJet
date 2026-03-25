@@ -28,12 +28,12 @@ class IDEInspector:
 
     # Map of process name patterns → IDE name
     _IDE_PATTERNS = {
+        "Xcode": "Xcode",
+        "Cursor Helper": "Cursor",
         "Cursor": "Cursor",
+        "Code Helper": "VSCode",
         "Code": "VSCode",
         "code": "VSCode",
-        "Code Helper": "VSCode",
-        "Cursor Helper": "Cursor",
-        "Xcode": "Xcode",
         "idea": "IntelliJ IDEA",
         "pycharm": "PyCharm",
         "webstorm": "WebStorm",
