@@ -2,12 +2,13 @@
 MacJet — IDE Inspector
 Detects projects/workspaces for VSCode, Cursor, Xcode, JetBrains IDEs.
 """
+
 from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 import psutil
 
@@ -43,7 +44,9 @@ class IDEInspector:
         "phpstorm": "PhpStorm",
     }
 
-    async def inspect(self, process_name: str, cmdline: list[str], pid: int) -> Optional[IDEContext]:
+    async def inspect(
+        self, process_name: str, cmdline: list[str], pid: int
+    ) -> Optional[IDEContext]:
         """Extract IDE project context from process info."""
         ide_name = self._match_ide(process_name)
         if not ide_name:
@@ -137,7 +140,7 @@ class IDEInspector:
 
     async def _get_window_title(self, app_name: str) -> str:
         """Get the frontmost window title for an app via osascript."""
-        script = f'''
+        script = f"""
 tell application "System Events"
     tell process "{app_name}"
         try
@@ -147,10 +150,12 @@ tell application "System Events"
         end try
     end tell
 end tell
-'''
+"""
         try:
             proc = await asyncio.create_subprocess_exec(
-                "osascript", "-e", script,
+                "osascript",
+                "-e",
+                script,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.DEVNULL,
             )

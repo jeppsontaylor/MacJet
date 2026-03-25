@@ -1,9 +1,10 @@
 """
 Tests for the Reclaim Scoring Engine — multi-factor process scoring logic.
 """
+
 from __future__ import annotations
 
-from macjet.collectors.metrics_history import MetricsHistory, ReclaimCandidate
+from macjet.collectors.metrics_history import ReclaimCandidate
 
 
 class TestReclaimScoring:
@@ -62,12 +63,22 @@ class TestReclaimScoring:
     def test_high_wakeups_adds_5_points(self, metrics, clock):
         """High wakeups should add 5 points."""
         base = metrics.compute_reclaim_score(
-            group_key="A", app_name="A", icon="", pids=[1],
-            total_cpu=0.0, total_memory_mb=100.0, child_count=1,
+            group_key="A",
+            app_name="A",
+            icon="",
+            pids=[1],
+            total_cpu=0.0,
+            total_memory_mb=100.0,
+            child_count=1,
         )
         with_wakeups = metrics.compute_reclaim_score(
-            group_key="A", app_name="A", icon="", pids=[1],
-            total_cpu=0.0, total_memory_mb=100.0, child_count=1,
+            group_key="A",
+            app_name="A",
+            icon="",
+            pids=[1],
+            total_cpu=0.0,
+            total_memory_mb=100.0,
+            child_count=1,
             has_high_wakeups=True,
         )
         assert with_wakeups.score == base.score + 5

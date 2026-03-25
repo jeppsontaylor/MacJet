@@ -4,17 +4,15 @@ system process detection, role extraction.
 
 These test the pure functions without requiring a live psutil connection.
 """
+
 from __future__ import annotations
 
-import pytest
-
 from macjet.collectors.process_collector import (
-    _parse_app_name,
     _determine_group_key,
     _extract_role_type,
     _is_system_process,
+    _parse_app_name,
     _severity_icon,
-    ProcessInfo,
 )
 from tests.conftest import make_process_info
 
@@ -39,8 +37,9 @@ class TestParseAppName:
     """Verify app name extraction from process info."""
 
     def test_chrome_renderer_helper(self):
-        proc = make_process_info(name="Google Chrome Helper (Renderer)",
-                                 cmdline=["--type=renderer"])
+        proc = make_process_info(
+            name="Google Chrome Helper (Renderer)", cmdline=["--type=renderer"]
+        )
         result = _parse_app_name(proc)
         assert "Google Chrome" in result
         assert "renderer" in result

@@ -1,11 +1,11 @@
 """
 Tests for AsyncTTLCache — TTL expiry, thundering herd protection, invalidation.
 """
+
 from __future__ import annotations
 
 import asyncio
-import time
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 

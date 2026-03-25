@@ -3,11 +3,12 @@ MacJet — Energy Collector (2s lane)
 Persistent powermetrics subprocess in plist mode.
 Parses per-process energy impact, GPU time, coalition data, SMC fan/temp.
 """
+
 from __future__ import annotations
 
 import asyncio
-import plistlib
 import os
+import plistlib
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -15,6 +16,7 @@ from typing import Optional
 @dataclass
 class EnergyInfo:
     """Per-process energy data from powermetrics."""
+
     pid: int
     name: str
     energy_impact: float = 0.0
@@ -31,6 +33,7 @@ class EnergyInfo:
 @dataclass
 class ThermalInfo:
     """System-wide thermal data."""
+
     cpu_die_temp: float = 0.0
     gpu_die_temp: float = 0.0
     fan_speed_rpm: int = 0
@@ -42,6 +45,7 @@ class ThermalInfo:
 @dataclass
 class EnergySnapshot:
     """Complete energy snapshot from one powermetrics sample."""
+
     processes: dict[int, EnergyInfo] = field(default_factory=dict)
     coalitions: dict[str, list[EnergyInfo]] = field(default_factory=dict)
     thermal: ThermalInfo = field(default_factory=ThermalInfo)
@@ -79,9 +83,12 @@ class EnergyCollector:
         try:
             self._process = await asyncio.create_subprocess_exec(
                 "powermetrics",
-                "--format", "plist",
-                "--samplers", "tasks,smc,gpu_power",
-                "-i", "2000",  # 2 second interval
+                "--format",
+                "plist",
+                "--samplers",
+                "tasks,smc,gpu_power",
+                "-i",
+                "2000",  # 2 second interval
                 "--show-process-energy",
                 "--show-process-gpu",
                 "--show-process-coalition",
@@ -120,9 +127,7 @@ class EnergyCollector:
 
         while self._running:
             try:
-                line = await asyncio.wait_for(
-                    self._process.stdout.readline(), timeout=5
-                )
+                line = await asyncio.wait_for(self._process.stdout.readline(), timeout=5)
                 if not line:
                     break
 
@@ -147,6 +152,7 @@ class EnergyCollector:
     def _parse_plist(self, data: bytes):
         """Parse a complete plist blob from powermetrics."""
         import time
+
         try:
             plist = plistlib.loads(data)
         except Exception:
@@ -169,7 +175,9 @@ class EnergyCollector:
             if fans:
                 fan = fans[0] if isinstance(fans, list) else fans
                 if isinstance(fan, dict):
-                    snapshot.thermal.fan_speed_rpm = int(fan.get("speed", fan.get("actual_speed", 0)))
+                    snapshot.thermal.fan_speed_rpm = int(
+                        fan.get("speed", fan.get("actual_speed", 0))
+                    )
                     snapshot.thermal.fan_speed_max = int(fan.get("max_speed", 0))
 
             # Temperature — try common keys
@@ -199,16 +207,19 @@ class EnergyCollector:
                     pid=pid,
                     name=task.get("name", ""),
                     energy_impact=float(task.get("energy_impact", 0)),
-                    cpu_ms_per_s=float(task.get("cpu_time_ms_per_s",
-                                    task.get("cputime_ms_per_s", 0))),
-                    wakeups_per_s=float(task.get("wakeups_per_s",
-                                    task.get("interrupt_wakeups_per_s", 0))),
-                    gpu_ms_per_s=float(task.get("gpu_ms_per_s",
-                                    task.get("gputime_ms_per_s", 0))),
-                    bytes_read_per_s=float(task.get("bytes_read_per_s",
-                                        task.get("diskio_bytesread_per_s", 0))),
-                    bytes_written_per_s=float(task.get("bytes_written_per_s",
-                                            task.get("diskio_byteswritten_per_s", 0))),
+                    cpu_ms_per_s=float(
+                        task.get("cpu_time_ms_per_s", task.get("cputime_ms_per_s", 0))
+                    ),
+                    wakeups_per_s=float(
+                        task.get("wakeups_per_s", task.get("interrupt_wakeups_per_s", 0))
+                    ),
+                    gpu_ms_per_s=float(task.get("gpu_ms_per_s", task.get("gputime_ms_per_s", 0))),
+                    bytes_read_per_s=float(
+                        task.get("bytes_read_per_s", task.get("diskio_bytesread_per_s", 0))
+                    ),
+                    bytes_written_per_s=float(
+                        task.get("bytes_written_per_s", task.get("diskio_byteswritten_per_s", 0))
+                    ),
                     packets_in_per_s=float(task.get("packets_in_per_s", 0)),
                     packets_out_per_s=float(task.get("packets_out_per_s", 0)),
                 )
@@ -226,12 +237,14 @@ class EnergyCollector:
                 if isinstance(tasks_in_coal, list):
                     for t in tasks_in_coal:
                         if isinstance(t, dict):
-                            coal_entries.append(EnergyInfo(
-                                pid=t.get("pid", 0),
-                                name=t.get("name", ""),
-                                energy_impact=float(t.get("energy_impact", 0)),
-                                coalition=coal_name,
-                            ))
+                            coal_entries.append(
+                                EnergyInfo(
+                                    pid=t.get("pid", 0),
+                                    name=t.get("name", ""),
+                                    energy_impact=float(t.get("energy_impact", 0)),
+                                    coalition=coal_name,
+                                )
+                            )
                 snapshot.coalitions[coal_name] = coal_entries
 
         self._latest = snapshot

@@ -18,33 +18,33 @@ from dataclasses import dataclass
 
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.server.fastmcp.prompts import base as prompt_base
-from mcp.server.session import ServerSession
 
-from macjet.collectors.process_collector import ProcessCollector
 from macjet.collectors.energy_collector import EnergyCollector
+from macjet.collectors.process_collector import ProcessCollector
 from macjet.inspectors.chrome_tab_mapper import ChromeTabMapper
+from macjet.mcp import resources as resource_handlers
+from macjet.mcp import tools as tool_handlers
 from macjet.mcp.cache import AsyncTTLCache
 from macjet.mcp.models import (
+    ChromeTabsResult,
+    EnergyReport,
+    HeatExplanation,
     KillConfirmation,
     KillResult,
+    NetworkReport,
+    ProcessDetail,
+    ProcessListResult,
     SuspendResult,
     SystemOverview,
-    ProcessListResult,
-    ProcessDetail,
-    ChromeTabsResult,
-    HeatExplanation,
-    EnergyReport,
-    NetworkReport,
 )
-from macjet.mcp import tools as tool_handlers
-from macjet.mcp import resources as resource_handlers
-
 
 # ── Lifespan Context ─────────────────────────────────────────
+
 
 @dataclass
 class AppContext:
     """Shared state initialized once at server boot."""
+
     proc_collector: ProcessCollector
     energy_collector: EnergyCollector
     chrome_mapper: ChromeTabMapper
@@ -78,12 +78,13 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
 mcp = FastMCP(
     "MacJet",
     instructions="macOS process, energy, and thermal monitor for AI agents. "
-                 "Query CPU/memory/energy usage, Chrome tabs, and kill processes.",
+    "Query CPU/memory/energy usage, Chrome tabs, and kill processes.",
     lifespan=app_lifespan,
 )
 
 
 # ── Helper ───────────────────────────────────────────────────
+
 
 def _ctx(ctx: Context) -> AppContext:
     """Extract the typed lifespan context."""
@@ -94,13 +95,17 @@ def _ctx(ctx: Context) -> AppContext:
 # TOOLS
 # ═══════════════════════════════════════════════════════════════
 
+
 @mcp.tool()
 async def get_system_overview(ctx: Context) -> SystemOverview:
     """Get a concise snapshot of system health: CPU, memory, thermals, top process, and a plain-English verdict."""
     app = _ctx(ctx)
     await ctx.info("Collecting system overview...")
     result = await tool_handlers.handle_get_system_overview(
-        app.proc_collector, app.energy_collector, app.chrome_mapper, app.cache,
+        app.proc_collector,
+        app.energy_collector,
+        app.chrome_mapper,
+        app.cache,
     )
     await ctx.info(f"System: {result.verdict}")
     return result
@@ -117,8 +122,13 @@ async def list_processes(
     app = _ctx(ctx)
     await ctx.info(f"Listing processes (sort={sort_by}, filter='{filter}', limit={limit})")
     return await tool_handlers.handle_list_processes(
-        app.proc_collector, app.energy_collector, app.chrome_mapper, app.cache,
-        sort_by=sort_by, filter=filter, limit=limit,
+        app.proc_collector,
+        app.energy_collector,
+        app.chrome_mapper,
+        app.cache,
+        sort_by=sort_by,
+        filter=filter,
+        limit=limit,
     )
 
 
@@ -131,14 +141,22 @@ async def get_process_detail(
     """Deep-dive into a process group by name or specific PID. Returns children, cmdlines, tabs, energy."""
     if not name and pid <= 0:
         return ProcessDetail(
-            name="", total_cpu=0, total_memory_mb=0, process_count=0,
-            children=[], why_hot="Provide either 'name' or 'pid' parameter.",
+            name="",
+            total_cpu=0,
+            total_memory_mb=0,
+            process_count=0,
+            children=[],
+            why_hot="Provide either 'name' or 'pid' parameter.",
         )
     app = _ctx(ctx)
     await ctx.report_progress(0.2, 1.0, "Collecting process data")
     result = await tool_handlers.handle_get_process_detail(
-        app.proc_collector, app.energy_collector, app.chrome_mapper, app.cache,
-        name=name, pid=pid,
+        app.proc_collector,
+        app.energy_collector,
+        app.chrome_mapper,
+        app.cache,
+        name=name,
+        pid=pid,
     )
     await ctx.report_progress(1.0, 1.0, "Done")
     return result
@@ -153,7 +171,9 @@ async def get_chrome_tabs(
     """List Chrome tabs with renderer PIDs and CPU time. Requires Chrome to be running with remote debugging."""
     app = _ctx(ctx)
     await ctx.info("Querying Chrome DevTools Protocol...")
-    return await tool_handlers.handle_get_chrome_tabs(app.chrome_mapper, sort_by=sort_by, limit=limit)
+    return await tool_handlers.handle_get_chrome_tabs(
+        app.chrome_mapper, sort_by=sort_by, limit=limit
+    )
 
 
 @mcp.tool()
@@ -162,7 +182,10 @@ async def explain_heat(ctx: Context) -> HeatExplanation:
     app = _ctx(ctx)
     await ctx.info("Analyzing system heat...")
     return await tool_handlers.handle_explain_heat(
-        app.proc_collector, app.energy_collector, app.chrome_mapper, app.cache,
+        app.proc_collector,
+        app.energy_collector,
+        app.chrome_mapper,
+        app.cache,
     )
 
 
@@ -176,8 +199,12 @@ async def search_processes(
     app = _ctx(ctx)
     await ctx.info(f"Searching for '{query}'...")
     return await tool_handlers.handle_list_processes(
-        app.proc_collector, app.energy_collector, app.chrome_mapper, app.cache,
-        filter=query, limit=limit,
+        app.proc_collector,
+        app.energy_collector,
+        app.chrome_mapper,
+        app.cache,
+        filter=query,
+        limit=limit,
     )
 
 
@@ -206,12 +233,14 @@ async def kill_process(
     try:
         result = await ctx.elicit(
             message=f"Kill PID {pid} ({info.get('name', '?')}, {info.get('cpu_percent', 0):.1f}% CPU)?\n"
-                    f"Signal: {sig_name}\nReason: {reason}",
+            f"Signal: {sig_name}\nReason: {reason}",
             schema=KillConfirmation,
         )
         if result.action != "accept" or not result.data or not result.data.confirm:
             await ctx.info(f"Kill declined by user for PID {pid}")
-            return KillResult(action="declined", pid=pid, name=info.get("name", "unknown"), success=False)
+            return KillResult(
+                action="declined", pid=pid, name=info.get("name", "unknown"), success=False
+            )
     except Exception:
         # Client doesn't support elicitation — proceed with warning
         await ctx.warning(f"Client doesn't support elicitation. Proceeding with kill of PID {pid}.")
@@ -222,8 +251,11 @@ async def kill_process(
     request_id = str(ctx.request_id) if ctx.request_id else ""
 
     return await tool_handlers.handle_kill_process(
-        pid=pid, reason=reason, force=force,
-        client_id=client_id, request_id=request_id,
+        pid=pid,
+        reason=reason,
+        force=force,
+        client_id=client_id,
+        request_id=request_id,
     )
 
 
@@ -245,8 +277,11 @@ async def suspend_process(
     request_id = str(ctx.request_id) if ctx.request_id else ""
 
     return await tool_handlers.handle_suspend_process(
-        pid=pid, resume=False, reason=reason,
-        client_id=client_id, request_id=request_id,
+        pid=pid,
+        resume=False,
+        reason=reason,
+        client_id=client_id,
+        request_id=request_id,
     )
 
 
@@ -261,8 +296,11 @@ async def resume_process(
     request_id = str(ctx.request_id) if ctx.request_id else ""
 
     return await tool_handlers.handle_suspend_process(
-        pid=pid, resume=True, reason=reason,
-        client_id=client_id, request_id=request_id,
+        pid=pid,
+        resume=True,
+        reason=reason,
+        client_id=client_id,
+        request_id=request_id,
     )
 
 
@@ -285,7 +323,10 @@ async def get_network_activity(
     """Get top processes by network bytes sent/received."""
     app = _ctx(ctx)
     return await tool_handlers.handle_get_network_activity(
-        app.proc_collector, app.cache, sort_by=sort_by, limit=limit,
+        app.proc_collector,
+        app.cache,
+        sort_by=sort_by,
+        limit=limit,
     )
 
 
@@ -293,12 +334,16 @@ async def get_network_activity(
 # RESOURCES
 # ═══════════════════════════════════════════════════════════════
 
+
 @mcp.resource("macjet://system/overview")
 async def resource_system_overview() -> str:
     """Live system stats snapshot: CPU, memory, thermals."""
     app = _ctx(mcp.get_context())
     return await resource_handlers.resource_system_overview(
-        app.proc_collector, app.energy_collector, app.chrome_mapper, app.cache,
+        app.proc_collector,
+        app.energy_collector,
+        app.chrome_mapper,
+        app.cache,
     )
 
 
@@ -307,7 +352,10 @@ async def resource_processes_top() -> str:
     """Top 25 process groups by CPU usage."""
     app = _ctx(mcp.get_context())
     return await resource_handlers.resource_processes_top(
-        app.proc_collector, app.energy_collector, app.chrome_mapper, app.cache,
+        app.proc_collector,
+        app.energy_collector,
+        app.chrome_mapper,
+        app.cache,
     )
 
 
@@ -316,7 +364,10 @@ async def resource_process_by_name(name: str) -> str:
     """Detailed info about a specific process group."""
     app = _ctx(mcp.get_context())
     return await resource_handlers.resource_process_by_name(
-        app.proc_collector, app.energy_collector, app.chrome_mapper, app.cache,
+        app.proc_collector,
+        app.energy_collector,
+        app.chrome_mapper,
+        app.cache,
         name=name,
     )
 
@@ -345,15 +396,22 @@ async def resource_audit_log() -> str:
 # PROMPTS
 # ═══════════════════════════════════════════════════════════════
 
+
 @mcp.prompt(title="Troubleshoot Performance")
 async def troubleshoot_performance(ctx: Context) -> list[prompt_base.Message]:
     """Diagnose a slow or hot Mac. Automatically attaches system overview and top processes."""
     app = _ctx(ctx)
     overview = await resource_handlers.resource_system_overview(
-        app.proc_collector, app.energy_collector, app.chrome_mapper, app.cache,
+        app.proc_collector,
+        app.energy_collector,
+        app.chrome_mapper,
+        app.cache,
     )
     top = await resource_handlers.resource_processes_top(
-        app.proc_collector, app.energy_collector, app.chrome_mapper, app.cache,
+        app.proc_collector,
+        app.energy_collector,
+        app.chrome_mapper,
+        app.cache,
     )
 
     return [
@@ -390,10 +448,16 @@ async def generate_system_report(ctx: Context) -> list[prompt_base.Message]:
     """Generate a comprehensive system diagnostic report."""
     app = _ctx(ctx)
     overview = await resource_handlers.resource_system_overview(
-        app.proc_collector, app.energy_collector, app.chrome_mapper, app.cache,
+        app.proc_collector,
+        app.energy_collector,
+        app.chrome_mapper,
+        app.cache,
     )
     top = await resource_handlers.resource_processes_top(
-        app.proc_collector, app.energy_collector, app.chrome_mapper, app.cache,
+        app.proc_collector,
+        app.energy_collector,
+        app.chrome_mapper,
+        app.cache,
     )
     tabs = await resource_handlers.resource_chrome_tabs(app.chrome_mapper)
     energy = await resource_handlers.resource_energy_report(app.energy_collector)
@@ -414,6 +478,7 @@ async def generate_system_report(ctx: Context) -> list[prompt_base.Message]:
 # ═══════════════════════════════════════════════════════════════
 # ENTRY POINT
 # ═══════════════════════════════════════════════════════════════
+
 
 def main():
     """Run the MCP server on stdio."""

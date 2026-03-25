@@ -3,6 +3,7 @@ MacJet — Browser Inspector
 Queries Chrome/Safari/Brave/Arc for open tabs via AppleScript.
 Optional Chromium DevTools Protocol support for precision mode.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -127,7 +128,9 @@ class BrowserInspector:
 
         try:
             proc = await asyncio.create_subprocess_exec(
-                "osascript", "-e", script,
+                "osascript",
+                "-e",
+                script,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.DEVNULL,
             )
@@ -174,7 +177,10 @@ class BrowserInspector:
         """Try Chromium DevTools Protocol for precise tab info."""
         try:
             proc = await asyncio.create_subprocess_exec(
-                "curl", "-s", "--connect-timeout", "1",
+                "curl",
+                "-s",
+                "--connect-timeout",
+                "1",
                 f"http://localhost:{self._cdp_port}/json",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.DEVNULL,
@@ -195,11 +201,13 @@ class BrowserInspector:
         for target in targets:
             if target.get("type") != "page":
                 continue
-            tabs.append(TabInfo(
-                title=target.get("title", ""),
-                url=target.get("url", ""),
-                is_active=False,  # CDP doesn't indicate active tab easily
-            ))
+            tabs.append(
+                TabInfo(
+                    title=target.get("title", ""),
+                    url=target.get("url", ""),
+                    is_active=False,  # CDP doesn't indicate active tab easily
+                )
+            )
 
         if not tabs:
             return None

@@ -8,6 +8,7 @@ Strategy:
 3. Per-tab WS `Performance.getMetrics` — JS heap per tab (fast 1s timeout)
 4. Heuristic PID correlation via creation order when exact mapping unavailable
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -20,6 +21,7 @@ from typing import Optional
 @dataclass
 class ChromeTab:
     """A Chrome tab with resource usage info."""
+
     target_id: str = ""
     title: str = ""
     url: str = ""
@@ -38,6 +40,7 @@ class ChromeTab:
 @dataclass
 class ChromeSnapshot:
     """Full Chrome state snapshot."""
+
     tabs: list[ChromeTab] = field(default_factory=list)
     renderer_pids: dict[int, float] = field(default_factory=dict)  # pid → cpuTime
     total_tabs: int = 0
@@ -101,7 +104,9 @@ class ChromeTabMapper:
         """Get tab list from Chrome's /json endpoint."""
         loop = asyncio.get_event_loop()
         try:
-            raw = await loop.run_in_executor(None, self._fetch_json, f"http://localhost:{self._port}/json")
+            raw = await loop.run_in_executor(
+                None, self._fetch_json, f"http://localhost:{self._port}/json"
+            )
             if raw is None:
                 return None
 
@@ -109,14 +114,16 @@ class ChromeTabMapper:
             for entry in raw:
                 if entry.get("type") not in ("page", "background_page"):
                     continue
-                tabs.append(ChromeTab(
-                    target_id=entry.get("id", ""),
-                    title=entry.get("title", ""),
-                    url=entry.get("url", ""),
-                    favicon_url=entry.get("faviconUrl", ""),
-                    tab_type=entry.get("type", "page"),
-                    ws_url=entry.get("webSocketDebuggerUrl", ""),
-                ))
+                tabs.append(
+                    ChromeTab(
+                        target_id=entry.get("id", ""),
+                        title=entry.get("title", ""),
+                        url=entry.get("url", ""),
+                        favicon_url=entry.get("faviconUrl", ""),
+                        tab_type=entry.get("type", "page"),
+                        ws_url=entry.get("webSocketDebuggerUrl", ""),
+                    )
+                )
             return tabs
         except Exception:
             return None
@@ -136,7 +143,10 @@ class ChromeTabMapper:
                 return {}
 
             import websockets
-            async with websockets.connect(browser_ws, close_timeout=2, max_size=10*1024*1024) as ws:
+
+            async with websockets.connect(
+                browser_ws, close_timeout=2, max_size=10 * 1024 * 1024
+            ) as ws:
                 await ws.send(json.dumps({"id": 1, "method": "SystemInfo.getProcessInfo"}))
                 resp = json.loads(await asyncio.wait_for(ws.recv(), timeout=5))
 
@@ -166,11 +176,9 @@ class ChromeTabMapper:
             async with sem:
                 try:
                     async with websockets.connect(
-                        tab.ws_url, close_timeout=1, open_timeout=1.5, max_size=5*1024*1024
+                        tab.ws_url, close_timeout=1, open_timeout=1.5, max_size=5 * 1024 * 1024
                     ) as ws:
-                        await ws.send(json.dumps({
-                            "id": 1, "method": "Performance.getMetrics"
-                        }))
+                        await ws.send(json.dumps({"id": 1, "method": "Performance.getMetrics"}))
                         resp = json.loads(await asyncio.wait_for(ws.recv(), timeout=1.5))
 
                         for m in resp.get("result", {}).get("metrics", []):
@@ -189,8 +197,8 @@ class ChromeTabMapper:
 
     def _correlate_pids(self, tabs: list[ChromeTab], renderer_pids: dict[int, float]):
         """Correlate renderer PIDs to tabs using best-effort heuristics.
-        
-        Strategy: 
+
+        Strategy:
         1. If we have task_duration from per-tab metrics, sort and pair by workload.
         2. If not, assign PIDs to tabs by index (tab order ≈ renderer creation order).
         Not perfect, but gives reasonable attribution for heaviest consumers.
@@ -207,7 +215,7 @@ class ChromeTabMapper:
 
         # Check if we have per-tab metrics
         tabs_with_duration = [t for t in tabs if t.task_duration > 0]
-        
+
         if tabs_with_duration:
             # Sort tabs by task_duration (heaviest first) and pair
             tabs_with_duration.sort(key=lambda t: t.task_duration, reverse=True)
@@ -246,6 +254,7 @@ class ChromeTabMapper:
         """Extract domain from a URL."""
         try:
             from urllib.parse import urlparse
+
             parsed = urlparse(url)
             return parsed.netloc or parsed.path[:30]
         except Exception:
@@ -255,7 +264,7 @@ class ChromeTabMapper:
         """Format a tab into a readable label for the process tree."""
         title = tab.title or self.get_domain(tab.url) or "untitled"
         if len(title) > max_len:
-            title = title[:max_len - 1] + "…"
+            title = title[: max_len - 1] + "…"
 
         parts = [title]
         if tab.js_heap_mb > 10:
@@ -269,6 +278,7 @@ class ChromeTabMapper:
 async def auto_detect_cdp_port() -> int:
     """Auto-detect Chrome's CDP port from its process arguments."""
     import psutil
+
     for proc in psutil.process_iter(["name", "cmdline"]):
         try:
             name = proc.info.get("name", "")

@@ -2,6 +2,7 @@
 MacJet MCP — Safety module for destructive operations.
 Kill guard, audit logging, PID validation, and self-protection.
 """
+
 from __future__ import annotations
 
 import json
@@ -12,7 +13,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import psutil
-
 
 # ── Constants ────────────────────────────────────────────────
 AUDIT_LOG_PATH = Path.home() / ".macjet" / "mcp_audit.jsonl"
@@ -27,7 +27,7 @@ def _ensure_audit_dir() -> None:
 
 def validate_pid(pid: int) -> tuple[bool, str]:
     """Validate that a PID is safe to operate on.
-    
+
     Returns (is_safe, error_message).
     """
     if pid <= 0:
@@ -48,7 +48,7 @@ def validate_pid(pid: int) -> tuple[bool, str]:
 
 def resolve_pid(pid: int) -> dict:
     """Resolve a PID to process info for preview/confirmation.
-    
+
     Returns a dict with name, cmdline, cpu_percent, memory_mb.
     """
     try:
@@ -66,9 +66,11 @@ def resolve_pid(pid: int) -> dict:
         return {"pid": pid, "name": "unknown", "error": str(e)}
 
 
-def send_signal(pid: int, sig: int, reason: str, client_id: str = "", request_id: str = "") -> tuple[bool, str]:
+def send_signal(
+    pid: int, sig: int, reason: str, client_id: str = "", request_id: str = ""
+) -> tuple[bool, str]:
     """Send a signal to a process and log the action.
-    
+
     Returns (success, error_message).
     """
     # Validate first
@@ -78,8 +80,19 @@ def send_signal(pid: int, sig: int, reason: str, client_id: str = "", request_id
 
     # Resolve for audit
     info = resolve_pid(pid)
-    sig_name = "SIGTERM" if sig == signal.SIGTERM else "SIGKILL" if sig == signal.SIGKILL else \
-               "SIGSTOP" if sig == signal.SIGSTOP else "SIGCONT" if sig == signal.SIGCONT else str(sig)
+    sig_name = (
+        "SIGTERM"
+        if sig == signal.SIGTERM
+        else (
+            "SIGKILL"
+            if sig == signal.SIGKILL
+            else (
+                "SIGSTOP"
+                if sig == signal.SIGSTOP
+                else "SIGCONT" if sig == signal.SIGCONT else str(sig)
+            )
+        )
+    )
 
     # Execute signal
     try:

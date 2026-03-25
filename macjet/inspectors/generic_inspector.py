@@ -2,11 +2,12 @@
 MacJet — Generic Inspector
 Parses command-line arguments for node, python, java, ruby, go, etc.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 
 @dataclass
@@ -39,7 +40,9 @@ class GenericInspector:
         "rust": "cargo",
     }
 
-    def inspect(self, process_name: str, cmdline: list[str], cwd: str = "", exe: str = "") -> Optional[GenericContext]:
+    def inspect(
+        self, process_name: str, cmdline: list[str], cwd: str = "", exe: str = ""
+    ) -> Optional[GenericContext]:
         """Extract context from process command line."""
         runtime = self._match_runtime(process_name)
         if not runtime and not cmdline:
@@ -97,7 +100,11 @@ class GenericInspector:
             if not p.is_absolute() and cwd:
                 display = arg
             elif p.is_absolute():
-                display = f"~/{p.relative_to(Path.home())}" if str(p).startswith(str(Path.home())) else arg
+                display = (
+                    f"~/{p.relative_to(Path.home())}"
+                    if str(p).startswith(str(Path.home()))
+                    else arg
+                )
             else:
                 display = arg
             ctx.label = f"{runtime} {display}"
@@ -115,7 +122,7 @@ class GenericInspector:
             arg = cmdline[i]
             if arg == "-m" and i + 1 < len(cmdline):
                 ctx.label = f"python -m {cmdline[i+1]}"
-                ctx.script_path = cmdline[i+1]
+                ctx.script_path = cmdline[i + 1]
                 return ctx
             elif arg == "-c":
                 ctx.label = "python -c <inline>"
@@ -139,9 +146,9 @@ class GenericInspector:
 
         for i, arg in enumerate(cmdline):
             if arg == "-jar" and i + 1 < len(cmdline):
-                jar = Path(cmdline[i+1]).name
+                jar = Path(cmdline[i + 1]).name
                 ctx.label = f"java -jar {jar}"
-                ctx.script_path = cmdline[i+1]
+                ctx.script_path = cmdline[i + 1]
                 return ctx
 
         # Look for main class (last non-flag argument)

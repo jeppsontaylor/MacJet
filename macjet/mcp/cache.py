@@ -2,6 +2,7 @@
 MacJet MCP — Async TTL Cache for collector results.
 Prevents agent burst calls from pegging the CPU with repeated psutil scans.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -11,7 +12,7 @@ from typing import Any, Callable, Coroutine
 
 class AsyncTTLCache:
     """Simple TTL cache for async functions.
-    
+
     Usage:
         cache = AsyncTTLCache(ttl=2.0)
         result = await cache.get("processes", collector.collect)

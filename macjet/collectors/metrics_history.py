@@ -4,12 +4,12 @@ MacJet — Metrics History & Reclaim Scoring Engine
 Per-process ring buffers for sparklines, exponential smoothing for stable
 sorting, and a multi-factor scoring engine for the Reclaim (Kill List) view.
 """
+
 from __future__ import annotations
 
 import time
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 # ─── Sparkline Characters ────────────────────────────
 SPARK_CHARS = "▁▂▃▄▅▆▇█"
@@ -17,9 +17,11 @@ SPARK_CHARS = "▁▂▃▄▅▆▇█"
 
 # ─── Data Classes ────────────────────────────────────
 
+
 @dataclass
 class ProcessSample:
     """Single point-in-time sample for a process."""
+
     timestamp: float
     cpu_percent: float
     memory_mb: float
@@ -28,6 +30,7 @@ class ProcessSample:
 @dataclass
 class ReclaimCandidate:
     """Scored recommendation for the Kill List."""
+
     group_key: str
     app_name: str
     icon: str
@@ -43,6 +46,7 @@ class ReclaimCandidate:
 
 
 # ─── Ring Buffer Store ───────────────────────────────
+
 
 class MetricsHistory:
     """Per-process ring buffer store with smoothing and scoring."""
@@ -68,16 +72,20 @@ class MetricsHistory:
             self._smoothed_cpu[pid] = cpu_percent
             self._smoothed_mem[pid] = memory_mb
 
-        self._buffers[pid].append(ProcessSample(
-            timestamp=now,
-            cpu_percent=cpu_percent,
-            memory_mb=memory_mb,
-        ))
+        self._buffers[pid].append(
+            ProcessSample(
+                timestamp=now,
+                cpu_percent=cpu_percent,
+                memory_mb=memory_mb,
+            )
+        )
         self._last_seen[pid] = now
 
         # Exponential smoothing
         α = self.SMOOTH_ALPHA
-        self._smoothed_cpu[pid] = α * cpu_percent + (1 - α) * self._smoothed_cpu.get(pid, cpu_percent)
+        self._smoothed_cpu[pid] = α * cpu_percent + (1 - α) * self._smoothed_cpu.get(
+            pid, cpu_percent
+        )
         self._smoothed_mem[pid] = α * memory_mb + (1 - α) * self._smoothed_mem.get(pid, memory_mb)
 
     def smoothed_cpu(self, pid: int) -> float:
@@ -118,7 +126,7 @@ class MetricsHistory:
 
     def sparkline(self, pid: int, width: int = 20, metric: str = "cpu") -> str:
         """Generate a braille sparkline string for the given PID.
-        
+
         Args:
             pid: Process ID
             width: Number of characters in the sparkline
@@ -206,10 +214,7 @@ class MetricsHistory:
     def expire_stale(self):
         """Remove entries for processes not seen recently."""
         now = time.time()
-        stale_pids = [
-            pid for pid, ts in self._last_seen.items()
-            if now - ts > self.EXPIRY_S
-        ]
+        stale_pids = [pid for pid, ts in self._last_seen.items() if now - ts > self.EXPIRY_S]
         for pid in stale_pids:
             self._buffers.pop(pid, None)
             self._smoothed_cpu.pop(pid, None)
@@ -275,8 +280,14 @@ class MetricsHistory:
 
         # Generate reason
         reason = self._generate_reason(
-            pids, total_cpu, total_memory_mb, child_count,
-            is_hidden, has_high_wakeups, total_growth, launch_age_s,
+            pids,
+            total_cpu,
+            total_memory_mb,
+            child_count,
+            is_hidden,
+            has_high_wakeups,
+            total_growth,
+            launch_age_s,
         )
 
         # Suggest action
@@ -323,7 +334,11 @@ class MetricsHistory:
             parts.append(f"Hidden {age_str}")
 
         if total_memory_mb > 500:
-            mem_str = f"{total_memory_mb / 1024:.1f}G" if total_memory_mb >= 1024 else f"{total_memory_mb:.0f}M"
+            mem_str = (
+                f"{total_memory_mb / 1024:.1f}G"
+                if total_memory_mb >= 1024
+                else f"{total_memory_mb:.0f}M"
+            )
             parts.append(f"{mem_str} resident")
 
         if growth_rate > 10:

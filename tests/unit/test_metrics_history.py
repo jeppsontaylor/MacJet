@@ -1,12 +1,10 @@
 """
 Tests for MetricsHistory — ring buffers, EMA smoothing, sparklines, and expiry.
 """
+
 from __future__ import annotations
 
-import time
-from unittest.mock import patch
-
-from macjet.collectors.metrics_history import MetricsHistory, SPARK_CHARS
+from macjet.collectors.metrics_history import SPARK_CHARS, MetricsHistory
 
 
 class TestRecordAndSmoothing:

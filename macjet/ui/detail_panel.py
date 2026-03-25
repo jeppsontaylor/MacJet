@@ -3,14 +3,15 @@ MacJet — Detail Panel (Inspector Rail)
 Shows sparklines, why-hot analysis, process metadata, and action shortcuts
 for the selected process or group.
 """
+
 from __future__ import annotations
 
-from textual.widget import Widget
 from textual.app import ComposeResult
+from textual.widget import Widget
 from textual.widgets import Static
 
-from ..collectors.process_collector import ProcessGroup, ProcessInfo
 from ..collectors.metrics_history import MetricsHistory, ReclaimCandidate
+from ..collectors.process_collector import ProcessGroup, ProcessInfo
 
 # Optional imports for browser/IDE context
 try:
@@ -79,17 +80,18 @@ class DetailPanel(Widget):
             pass
 
     def show_empty(self):
-        self._update(
-            "  [#60A5FA]Inspector[/]",
-            "  [#7F8DB3]Select a process to inspect[/]"
-        )
+        self._update("  [#60A5FA]Inspector[/]", "  [#7F8DB3]Select a process to inspect[/]")
 
     def show_message(self, title: str, message: str):
         """Show a simple message in the inspector."""
         self._update(f"  [#FF8A4C]{title}[/]", f"  [#7F8DB3]{message}[/]")
 
-    def show_process(self, proc: ProcessInfo, group: ProcessGroup | None = None,
-                     metrics: MetricsHistory | None = None):
+    def show_process(
+        self,
+        proc: ProcessInfo,
+        group: ProcessGroup | None = None,
+        metrics: MetricsHistory | None = None,
+    ):
         """Show details for a single process."""
         title = f"  📋 {proc.context_label or proc.name}"
 
@@ -98,7 +100,7 @@ class DetailPanel(Widget):
         if metrics:
             spark = metrics.sparkline(proc.pid, width=28)
             lines.append(f"  [#45D6FF]{spark}[/]")
-            lines.append(f"  [#7F8DB3]60s CPU trend[/]")
+            lines.append("  [#7F8DB3]60s CPU trend[/]")
             lines.append("")
 
         lines.append(f"  [#7F8DB3]PID:[/]     [#E6ECFF]{proc.pid}[/]")
@@ -108,7 +110,9 @@ class DetailPanel(Widget):
         lines.append(f"  [#7F8DB3]Status:[/]  [#E6ECFF]{proc.status}[/]")
 
         if proc.launch_age_s > 0:
-            lines.append(f"  [#7F8DB3]Age:[/]     [#E6ECFF]{_format_duration(proc.launch_age_s)}[/]")
+            lines.append(
+                f"  [#7F8DB3]Age:[/]     [#E6ECFF]{_format_duration(proc.launch_age_s)}[/]"
+            )
 
         if proc.exe:
             exe_short = proc.exe if len(proc.exe) <= 30 else "…" + proc.exe[-29:]
@@ -118,11 +122,13 @@ class DetailPanel(Widget):
             lines.append(f"  [#7F8DB3]Role:[/]    [#A78BFA]{proc.role_type}[/]")
 
         if proc.is_system:
-            lines.append(f"  [#7F8DB3]Type:[/]    [#FF8A4C]System[/]")
+            lines.append("  [#7F8DB3]Type:[/]    [#FF8A4C]System[/]")
 
         if proc.energy_impact:
-            energy_color = "#FF4D6D" if proc.energy_impact == "HIGH" else (
-                "#FF8A4C" if proc.energy_impact == "MED" else "#32D583"
+            energy_color = (
+                "#FF4D6D"
+                if proc.energy_impact == "HIGH"
+                else ("#FF8A4C" if proc.energy_impact == "MED" else "#32D583")
             )
             lines.append(f"  [#7F8DB3]Energy:[/]  [{energy_color}]{proc.energy_impact}[/]")
 
@@ -150,7 +156,7 @@ class DetailPanel(Widget):
             pids = [p.pid for p in group.processes]
             spark = metrics.sparkline_for_group(pids, width=28)
             lines.append(f"  [#45D6FF]{spark}[/]")
-            lines.append(f"  [#7F8DB3]60s CPU trend (group)[/]")
+            lines.append("  [#7F8DB3]60s CPU trend (group)[/]")
             lines.append("")
 
         lines.append(f"  [#7F8DB3]CPU:[/]     [#E6ECFF]{group.total_cpu:.1f}%[/]")
@@ -159,10 +165,7 @@ class DetailPanel(Widget):
 
         # Memory trend
         if metrics:
-            total_growth = sum(
-                max(0, metrics.memory_growth_rate(p.pid))
-                for p in group.processes
-            )
+            total_growth = sum(max(0, metrics.memory_growth_rate(p.pid)) for p in group.processes)
             if total_growth > 1:
                 growth_color = "#FF4D6D" if total_growth > 50 else "#FDBA35"
                 lines.append(f"  [#7F8DB3]Δ Mem:[/]   [{growth_color}]{total_growth:+.0f}MB/min[/]")
@@ -190,7 +193,9 @@ class DetailPanel(Widget):
             sorted_roles = sorted(roles.items(), key=lambda x: x[1][1], reverse=True)
             for role, (count, cpu, mem) in sorted_roles:
                 label = role.capitalize()
-                lines.append(f"  [#E6ECFF]{label} ×{count}[/]  [#7F8DB3]{cpu:.1f}%  {_format_mem(mem)}[/]")
+                lines.append(
+                    f"  [#E6ECFF]{label} ×{count}[/]  [#7F8DB3]{cpu:.1f}%  {_format_mem(mem)}[/]"
+                )
 
         lines.append("")
         lines.append("  [#7F8DB3]─── Actions ───────────[/]")
@@ -215,15 +220,12 @@ class DetailPanel(Widget):
 
         # Memory growth
         if metrics:
-            growth = sum(
-                max(0, metrics.memory_growth_rate(p.pid))
-                for p in group.processes
-            )
+            growth = sum(max(0, metrics.memory_growth_rate(p.pid)) for p in group.processes)
             if growth > 20:
                 reasons.append(f"Memory growing +{growth:.0f}MB/min")
 
         # Hidden/background
-        if all(not hasattr(p, 'is_hidden') or p.is_hidden for p in group.processes):
+        if all(not hasattr(p, "is_hidden") or p.is_hidden for p in group.processes):
             reasons.append("Running in background")
 
         # High energy
@@ -236,8 +238,12 @@ class DetailPanel(Widget):
 
         return reasons
 
-    def show_reclaim(self, candidate: ReclaimCandidate, group: ProcessGroup,
-                     metrics: MetricsHistory | None = None):
+    def show_reclaim(
+        self,
+        candidate: ReclaimCandidate,
+        group: ProcessGroup,
+        metrics: MetricsHistory | None = None,
+    ):
         """Show Reclaim details for a kill candidate."""
         risk_colors = {
             "safe": "#32D583",
@@ -258,16 +264,20 @@ class DetailPanel(Widget):
 
         lines.append(f"  [#7F8DB3]Score:[/]   [#E6ECFF]{candidate.score}/100[/]")
         lines.append(f"  [#7F8DB3]Risk:[/]    [{risk_color}]{candidate.risk.upper()}[/]")
-        lines.append(f"  [#7F8DB3]Reclaim:[/] [#E6ECFF]~{candidate.reclaim_cpu:.0f}% CPU / {_format_mem(candidate.reclaim_mem_mb)}[/]")
+        lines.append(
+            f"  [#7F8DB3]Reclaim:[/] [#E6ECFF]~{candidate.reclaim_cpu:.0f}% CPU / {_format_mem(candidate.reclaim_mem_mb)}[/]"
+        )
         lines.append("")
-        lines.append(f"  [#FF8A4C]Reason:[/]")
+        lines.append("  [#FF8A4C]Reason:[/]")
         lines.append(f"  [#E6ECFF]{candidate.reason}[/]")
         lines.append("")
         lines.append(f"  [#7F8DB3]Suggested:[/] [#60A5FA]{candidate.suggested_action}[/]")
         lines.append(f"  [#7F8DB3]Children:[/]  [#E6ECFF]{candidate.child_count}[/]")
 
         if candidate.launch_age_s > 0:
-            lines.append(f"  [#7F8DB3]Age:[/]       [#E6ECFF]{_format_duration(candidate.launch_age_s)}[/]")
+            lines.append(
+                f"  [#7F8DB3]Age:[/]       [#E6ECFF]{_format_duration(candidate.launch_age_s)}[/]"
+            )
 
         lines.append("")
         lines.append("  [#7F8DB3]─── Actions ───────────[/]")

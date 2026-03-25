@@ -2,14 +2,15 @@
 MacJet — System Header Widget (Flight Deck Strip)
 Compact 2-line branded header with CPU bar, memory, thermal, network.
 """
+
 from __future__ import annotations
 
 import platform
 import subprocess
 
-from textual.widget import Widget
-from textual.reactive import reactive
 from textual.app import ComposeResult
+from textual.reactive import reactive
+from textual.widget import Widget
 from textual.widgets import Static
 
 
@@ -17,8 +18,7 @@ def _get_machine_model() -> str:
     """Get the Mac model name from sysctl (cached)."""
     try:
         result = subprocess.run(
-            ["sysctl", "-n", "hw.model"],
-            capture_output=True, text=True, timeout=2
+            ["sysctl", "-n", "hw.model"], capture_output=True, text=True, timeout=2
         )
         model = result.stdout.strip()
         if model:
@@ -30,10 +30,10 @@ def _get_machine_model() -> str:
 
 # ─── Afterburner CPU Color Ramp ──────────────────────
 _CPU_RAMP = [
-    (5,   "#22D3EE"),  # cyan
-    (20,  "#3B82F6"),  # blue
-    (50,  "#8B5CF6"),  # violet
-    (80,  "#D946EF"),  # magenta
+    (5, "#22D3EE"),  # cyan
+    (20, "#3B82F6"),  # blue
+    (50, "#8B5CF6"),  # violet
+    (80, "#D946EF"),  # magenta
     (999, "#FB7185"),  # hot pink
 ]
 
@@ -120,9 +120,7 @@ class SystemHeader(Widget):
 
         # Line 2: Thermal + Temp + Fan + GPU + Network + Self
         if self.paused:
-            line2 = (
-                f"  [#FF8A4C]⏸  PAUSED[/] [#7F8DB3]— list frozen. Press [bold]Space[/bold] to resume.[/]"
-            )
+            line2 = "  [#FF8A4C]⏸  PAUSED[/] [#7F8DB3]— list frozen. Press [bold]Space[/bold] to resume.[/]"
         else:
             thermal_dot = self._thermal_dot()
             tp_label = self.thermal_pressure.capitalize()
@@ -130,7 +128,11 @@ class SystemHeader(Widget):
             parts = [f"  Thermal: {thermal_dot} [#E6ECFF]{tp_label}[/]"]
 
             if self.die_temp > 0:
-                temp_color = "#FF4D6D" if self.die_temp > 90 else ("#FF8A4C" if self.die_temp > 70 else "#32D583")
+                temp_color = (
+                    "#FF4D6D"
+                    if self.die_temp > 90
+                    else ("#FF8A4C" if self.die_temp > 70 else "#32D583")
+                )
                 parts.append(f"[{temp_color}]{self.die_temp:.0f}°C[/]")
 
             if self.fan_rpm > 0:

@@ -2,13 +2,15 @@
 MacJet — Drill-Down Screens
 Full-screen views for sample, fs_usage, nettop, sc_usage.
 """
+
 from __future__ import annotations
 
 import asyncio
-from textual.screen import ModalScreen
-from textual.widgets import Static, Header, Footer, TextArea
-from textual.containers import Vertical
+
 from textual.app import ComposeResult
+from textual.containers import Vertical
+from textual.screen import ModalScreen
+from textual.widgets import Static
 
 
 class DrillDownScreen(ModalScreen):
@@ -81,9 +83,7 @@ class DrillDownScreen(ModalScreen):
             lines = []
             while True:
                 try:
-                    line = await asyncio.wait_for(
-                        self._process.stdout.readline(), timeout=10.0
-                    )
+                    line = await asyncio.wait_for(self._process.stdout.readline(), timeout=10.0)
                     if not line:
                         break
                     text = line.decode("utf-8", errors="replace").rstrip()

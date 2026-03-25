@@ -2,11 +2,12 @@
 MacJet — Container Inspector
 Docker / OrbStack / Colima container stats integration.
 """
+
 from __future__ import annotations
 
 import asyncio
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 
@@ -47,8 +48,11 @@ class ContainerInspector:
         """Run docker stats --no-stream --format json."""
         try:
             proc = await asyncio.create_subprocess_exec(
-                "docker", "stats", "--no-stream",
-                "--format", '{"name":"{{.Name}}","id":"{{.ID}}","cpu":"{{.CPUPerc}}","mem_usage":"{{.MemUsage}}","net":"{{.NetIO}}","status":"running"}',
+                "docker",
+                "stats",
+                "--no-stream",
+                "--format",
+                '{"name":"{{.Name}}","id":"{{.ID}}","cpu":"{{.CPUPerc}}","mem_usage":"{{.MemUsage}}","net":"{{.NetIO}}","status":"running"}',
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.DEVNULL,
             )
@@ -85,15 +89,17 @@ class ContainerInspector:
             net_io = data.get("net", "0B / 0B")
             net_parts = net_io.split(" / ")
 
-            containers.append(ContainerInfo(
-                name=data.get("name", ""),
-                container_id=data.get("id", ""),
-                cpu_percent=cpu,
-                memory_mb=mem_used,
-                net_input=net_parts[0] if net_parts else "",
-                net_output=net_parts[1] if len(net_parts) > 1 else "",
-                status=data.get("status", ""),
-            ))
+            containers.append(
+                ContainerInfo(
+                    name=data.get("name", ""),
+                    container_id=data.get("id", ""),
+                    cpu_percent=cpu,
+                    memory_mb=mem_used,
+                    net_input=net_parts[0] if net_parts else "",
+                    net_output=net_parts[1] if len(net_parts) > 1 else "",
+                    status=data.get("status", ""),
+                )
+            )
 
         return containers
 
