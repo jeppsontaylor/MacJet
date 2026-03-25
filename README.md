@@ -11,7 +11,6 @@
     <img src="https://img.shields.io/badge/python-3.10+-3776AB.svg?logo=python&logoColor=white" alt="Python 3.10+">
     <img src="https://img.shields.io/badge/platform-macOS-000000.svg?logo=apple" alt="macOS">
     <img src="https://img.shields.io/badge/MCP-compatible-8A2BE2.svg" alt="MCP Compatible">
-    <img src="https://img.shields.io/badge/coverage-85%25-green.svg" alt="Code Coverage">
     <a href="https://github.com/jepsontaylor/macjet/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
   </p>
 </p>
