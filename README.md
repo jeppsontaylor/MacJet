@@ -140,36 +140,115 @@ Select any process or group (by pressing `w`) to see:
 
 ---
 
-## 📚 Tutorials
+## Tutorials
 
 ### 1. Navigating the Flight Deck
-MacJet uses a multi-view layout, similar to browser tabs. Press `1` through `5` or use the `Tab` key to cycle through the views:
-- **`1` Apps**: The default view. Shows processes cleanly grouped by parent application.
-- **`2` Tree**: A raw hierarchical view of every process on your system.
-- **`3` Pressure**: Focuses entirely on memory hogs and RAM pressure.
-- **`4` Energy**: Highlights battery drain, wakeups, and high-impact tasks (requires `sudo`).
-- **`5` Reclaim**: The intelligent kill list.
 
-**Controls**: Use the `Up` and `Down` arrows to navigate rows. Press `Enter` to expand a rolled-up App group (like "Google Chrome") to see the individual helpers and renderer tabs underneath. Press `s` to change how the list is sorted (CPU, Memory, Name, PID).
+MacJet uses a multi-view layout, similar to browser tabs. Press `1` through `5` or use the `Tab` key to cycle through the views:
+
+| Key | View | Purpose |
+|-----|------|---------|
+| `1` | **Apps** | Processes grouped by parent application (default) |
+| `2` | **Tree** | Raw hierarchical process tree |
+| `3` | **Pressure** | Memory hogs and RAM pressure |
+| `4` | **Energy** | Battery drain, wakeups, thermal data (requires `sudo`) |
+| `5` | **Reclaim** | Intelligent kill list with scored recommendations |
+
+<p align="center">
+  <img src="assets/view_apps.png" alt="MacJet Apps View" width="700">
+  <br><em>The Apps view groups Chrome helpers, Docker daemons, and VS Code extensions under their parent applications.</em>
+</p>
+
+**Controls**: Use `Up`/`Down` arrows to navigate. Press `Enter` to expand a group and see individual processes. Press `s` to cycle sort mode (CPU, Memory, Name, PID). Press `/` to filter by name.
+
+---
 
 ### 2. Using the Reclaim Engine
-The Reclaim Engine (View `5`) takes the guesswork out of freeing up system resources. It analyzes every running process continuously and assigns a **Kill Score** from 0 to 100 based on six factors: sustained CPU usage, memory footprint, memory growth (leaks), hidden/background status, runaway process forks, and high wakeups.
 
-When your Mac is running hot, go to the Reclaim view:
-1. Look for processes in the 🟡 **Review** or 🔴 **Danger** risk bands.
-2. Highlight a resource-heavy background task.
-3. Press `k` to gracefully terminate it (SIGTERM), or `K` to force kill it (SIGKILL).
+The Reclaim Engine (View `5`) takes the guesswork out of freeing system resources. It continuously scores every process group on a **100-point Kill Score** based on six factors:
 
-*Note: The Reclaim Engine protects system-critical processes (PID < 500) and won't let you kill the operating system.*
+| Factor | Max Points | What it Measures |
+|--------|-----------|-----------------|
+| Sustained CPU (30s avg) | 30 | Prolonged high CPU consumption |
+| Memory footprint | 25 | Large resident memory (RSS) |
+| Memory growth rate | 15 | Potential memory leak |
+| Hidden/background | 15 | Not visible to the user |
+| Process storm (>10 children) | 10 | Runaway fork bombs |
+| High wakeups | 5 | Unnecessary energy drain |
 
-### 3. Understanding Chrome Tab Mapping
-When using Chrome, Brave, Arc, or other Chromium browsers, the activity monitor usually shows dozens of anonymous "Renderer Helper" processes. 
+<p align="center">
+  <img src="assets/view_reclaim.png" alt="MacJet Reclaim Engine" width="700">
+  <br><em>The Reclaim Engine scores each app and classifies it into risk bands with recommended actions.</em>
+</p>
 
-MacJet connects to your browser's DevTools Protocol to map those anonymous processes back to the actual website.
-1. Make sure Chrome is running with remote debugging enabled (`--remote-debugging-port=9222`).
-2. Go to the **Apps** view (`1`).
+**How to use it:**
+1. Switch to the Reclaim view (`5`).
+2. Look for processes with high scores in the **Review** or **Danger** risk bands.
+3. Highlight a candidate and press `k` for graceful termination (SIGTERM), or `K` for force kill (SIGKILL).
+
+> The Reclaim Engine protects system-critical processes (PID < 500) and the MacJet process itself. You cannot accidentally kill the operating system.
+
+---
+
+### 3. Understanding Energy and Thermals
+
+The Energy view (View `4`) is powered by Apple's `powermetrics` tool and requires `sudo` to function. It provides hardware-level metrics that no other terminal tool exposes:
+
+<p align="center">
+  <img src="assets/view_energy.png" alt="MacJet Energy View" width="700">
+  <br><em>The Energy view shows per-process energy impact, CPU time, wakeup frequency, and GPU usage.</em>
+</p>
+
+**Key metrics explained:**
+- **Energy Impact**: Apple's composite score combining CPU time, wakeups, disk I/O, and GPU usage into a single number. Higher = more battery drain.
+- **CPU ms/s**: Milliseconds of CPU time consumed per second.
+- **Wakeups/s**: How often the process interrupts the CPU from idle. High wakeups (>100/s) are a major battery killer, even if CPU% is low.
+- **GPU ms/s**: Time spent on the GPU, useful for identifying WebGL or Metal-heavy tabs.
+
+---
+
+### 4. Chrome Tab Mapping
+
+When using Chrome, Brave, Arc, or other Chromium browsers, the activity monitor usually shows dozens of anonymous "Renderer Helper" processes. MacJet connects to the browser's DevTools Protocol to map those anonymous processes back to the actual website.
+
+**Setup:**
+1. Launch Chrome with remote debugging: `open -a "Google Chrome" --args --remote-debugging-port=9222`
+2. Start MacJet and go to the **Apps** view (`1`).
 3. Find Google Chrome and press `Enter` to expand it.
-4. You will now see your specific tabs (e.g., "🌐 YouTube", "🌐 Gmail") listed with their exact CPU and Memory usage under the "Renderer" category.
+4. Individual tabs will appear under the "Renderer" bucket with their exact URL, CPU%, and memory usage.
+
+```
+▾ Google Chrome (40)       90.2%   4.7GB
+  ├─ Renderer ×12          39.8%   2.1GB
+  │  ├─ 🌐 YouTube            18.2%   340MB
+  │  ├─ 🌐 Gmail               8.1%   220MB
+  │  └─ 🌐 ChatGPT             6.3%   190MB
+  ├─ GPU ×1                46.6%   117MB
+  └─ Utility ×3             0.4%    90MB
+```
+
+---
+
+### 5. `sudo` vs Standard Mode
+
+MacJet works with or without root access, but `sudo` unlocks its full potential.
+
+| Capability | Standard Mode | `sudo` Mode |
+|-----------|:------------:|:-----------:|
+| App-centric process grouping | Yes | Yes |
+| Chrome tab mapping | Yes | Yes |
+| CPU/Memory metrics (psutil) | Yes | Yes |
+| Reclaim Engine scoring | Yes | Yes |
+| CPU die temperature | No | Yes |
+| GPU die temperature | No | Yes |
+| Fan speed (RPM) | No | Yes |
+| Thermal pressure level | No | Yes |
+| Per-process energy impact | No | Yes |
+| Per-process wakeup counts | No | Yes |
+| Kill any process (not just user-owned) | No | Yes |
+| `fs_usage` / `sc_usage` drill-downs | No | Yes |
+
+**Why does Apple require root for `powermetrics`?** The `powermetrics` tool accesses the System Management Controller (SMC) and Intel/Apple Silicon performance counters. Apple gates these behind root access to prevent side-channel timing attacks. MacJet does not store, transmit, or expose this data outside your terminal session.
 
 ---
 
@@ -179,7 +258,7 @@ MacJet ships a full **Model Context Protocol** server. Your AI agent can query s
 
 ### Quick Setup
 
-Add to your MCP client config (`claude_desktop_config.json`, Cursor settings, etc.):
+Add to your MCP client config (`claude_desktop_config.json`, Cursor settings, etc.). See [`examples/claude_desktop_config.json`](examples/claude_desktop_config.json) for a ready-to-use template.
 
 ```json
 {

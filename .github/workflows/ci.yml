@@ -39,5 +39,5 @@ jobs:
       - name: Import smoke test
         run: |
           python -c "from macjet.macjet_app import MacJetApp; print('TUI import OK')"
-          python -c "from macjet_mcp import mcp; print('MCP import OK')"
+          python -c "from macjet.mcp.server import mcp; print('MCP import OK')"
           python -c "from macjet.collectors.metrics_history import MetricsHistory; print('MetricsHistory import OK')"

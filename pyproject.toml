@@ -52,7 +52,7 @@ dev = [
 
 [project.scripts]
 macjet = "macjet.__main__:main"
-macjet-mcp = "macjet_mcp:main"
+macjet-mcp = "macjet.mcp.server:main"
 
 [project.urls]
 Homepage = "https://github.com/jepsontaylor/macjet"

@@ -300,7 +300,7 @@ main() {
             # Install MCP deps if needed
             pip install -q "mcp[cli]>=1.0.0" "pydantic>=2.0" "psutil>=7.0.0" "websockets>=13.0" 2>/dev/null
             echo -e "${GREEN}🔌 Starting MacJet MCP server (stdio)...${NC}" >&2
-            exec "${VENV_DIR}/bin/python" "${SCRIPT_DIR}/macjet_mcp.py"
+            exec "${VENV_DIR}/bin/python" -m macjet.mcp.server
             ;;
         --help|-h)
             show_help

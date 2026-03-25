@@ -5,18 +5,12 @@ MacJet MCP Server
 Exposes MacJet's process monitor as an MCP server for AI agents.
 
 Usage:
-    python macjet_mcp.py          # Run via stdio (default)
-    ./macjet.sh --mcp             # Via launcher
+    python -m macjet.mcp.server     # Run via module
+    ./macjet.sh --mcp               # Via launcher
 
 Compatible with: Claude Desktop, Cursor, GARY, any MCP client.
 """
 from __future__ import annotations
-
-import sys
-import os
-
-# Ensure the project root is on the path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
