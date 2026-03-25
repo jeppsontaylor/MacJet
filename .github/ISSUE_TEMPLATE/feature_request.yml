@@ -1,0 +1,61 @@
+name: 💡 Feature Request
+description: Suggest an enhancement or new feature
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We'd love to hear your ideas for making JetMonitor better!
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Feature Area
+      options:
+        - TUI (Terminal Interface)
+        - MCP Server (AI Agent Integration)
+        - Process Monitoring
+        - Energy / Thermal
+        - Chrome Integration
+        - Reclaim / Kill List
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Use Case
+      description: What problem does this feature solve? What's the use case?
+      placeholder: "I often need to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How would you like this to work?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative solutions or workarounds you've considered?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: contribution
+    attributes:
+      label: Would you be willing to contribute this?
+      options:
+        - "Yes, I'd like to implement this"
+        - "I can help with testing"
+        - "No, just suggesting"
+    validations:
+      required: false

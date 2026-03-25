@@ -1,0 +1,199 @@
+/* MacJet — Flight Deck Dark Graphite Theme */
+
+Screen {
+    background: #0A0F1E;
+    color: #E6ECFF;
+}
+
+/* ─── System Header ──────────────────────────────── */
+#system-header {
+    height: 2;
+    background: #10182B;
+    border-bottom: solid #1A2540;
+    padding: 0 1;
+    color: #E6ECFF;
+}
+
+#header-line-1, #header-line-2 {
+    height: 1;
+    width: 1fr;
+}
+
+.header-label {
+    color: #7F8DB3;
+}
+
+.header-value {
+    color: #E6ECFF;
+    text-style: bold;
+}
+
+.header-critical {
+    color: #FF4D6D;
+    text-style: bold;
+}
+
+.header-warning {
+    color: #FF8A4C;
+    text-style: bold;
+}
+
+.header-good {
+    color: #32D583;
+    text-style: bold;
+}
+
+/* ─── View Tabs ──────────────────────────────────── */
+#view-tabs {
+    height: 1;
+    background: #10182B;
+    border-bottom: solid #1A2540;
+    padding: 0 1;
+    color: #7F8DB3;
+}
+
+/* ─── Process Table ──────────────────────────────── */
+#process-panel {
+    height: 1fr;
+    background: #0A0F1E;
+}
+
+#process-toolbar {
+    height: 1;
+    background: #10182B;
+    border-bottom: solid #1A2540;
+    padding: 0 1;
+    color: #7F8DB3;
+}
+
+#process-table {
+    height: 1fr;
+}
+
+DataTable {
+    background: #0A0F1E;
+    color: #E6ECFF;
+}
+
+DataTable > .datatable--cursor {
+    background: #123B57;
+    color: #60A5FA;
+    text-style: bold;
+}
+
+DataTable > .datatable--header {
+    background: #10182B;
+    color: #7F8DB3;
+    text-style: bold;
+}
+
+DataTable > .datatable--even-row {
+    background: #0A0F1E;
+}
+
+DataTable > .datatable--odd-row {
+    background: #0E1425;
+}
+
+/* ─── Detail Panel (Inspector) ───────────────────── */
+#detail-panel {
+    width: 38;
+    border-left: solid #1A2540;
+    background: #10182B;
+    padding: 0 1;
+}
+
+#detail-title {
+    text-style: bold;
+    color: #60A5FA;
+    height: 1;
+}
+
+#detail-content, #detail-body {
+    color: #7F8DB3;
+}
+
+/* ─── Reclaim Panel ──────────────────────────────── */
+#reclaim-panel {
+    height: 1fr;
+    background: #0A0F1E;
+}
+
+#reclaim-toolbar {
+    height: 1;
+    background: #10182B;
+    border-bottom: solid #1A2540;
+    padding: 0 1;
+    color: #7F8DB3;
+}
+
+/* ─── Footer / Dock ──────────────────────────────── */
+#footer-bar {
+    height: 1;
+    background: #10182B;
+    border-top: solid #1A2540;
+    padding: 0 1;
+    color: #7F8DB3;
+    dock: bottom;
+}
+
+/* ─── Filter Input ───────────────────────────────── */
+#filter-input {
+    height: 1;
+    background: #0A0F1E;
+    border: solid #1A2540;
+    color: #E6ECFF;
+    display: none;
+}
+
+#filter-input.visible {
+    display: block;
+}
+
+/* ─── Severity Colors ────────────────────────────── */
+.severity-critical {
+    color: #FF4D6D;
+    text-style: bold;
+}
+
+.severity-warning {
+    color: #FF8A4C;
+}
+
+.severity-elevated {
+    color: #FDBA35;
+}
+
+.severity-normal {
+    color: #32D583;
+}
+
+/* ─── Confidence Badges ──────────────────────────── */
+.badge-exact {
+    color: #32D583;
+}
+
+.badge-window-exact {
+    color: #60A5FA;
+}
+
+.badge-app-exact {
+    color: #A78BFA;
+}
+
+.badge-inferred {
+    color: #FDBA35;
+}
+
+.badge-grouped {
+    color: #7F8DB3;
+}
+
+/* ─── Layouts ────────────────────────────────────── */
+#middle-section {
+    height: 1fr;
+}
+
+.horizontal-split {
+    layout: horizontal;
+}

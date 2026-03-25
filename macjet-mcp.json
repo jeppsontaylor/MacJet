@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "macjet": {
+      "command": "./macjet.sh",
+      "args": ["--mcp"],
+      "description": "macOS process monitor — query CPU/memory/energy, Chrome tabs, kill processes"
+    }
+  }
+}
