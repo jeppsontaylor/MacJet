@@ -136,6 +136,7 @@ class ProcessTree(Widget):
         self._sort_label = "cpu"
         self._view_label = "apps"
         self._filter_text = ""
+        self._user_moved_cursor = False  # Track if user has interacted
 
     def compose(self) -> ComposeResult:
         yield Static(
@@ -278,12 +279,19 @@ class ProcessTree(Widget):
                 if is_expanded:
                     self._render_children(table, group_key, group)
 
-        # Restore cursor
-        if saved_cursor_key and saved_cursor_key in self._row_keys:
+        # Restore cursor position and scroll viewport
+        if not self._user_moved_cursor:
+            # User hasn't interacted — always pin to top
+            table.move_cursor(row=0, animate=False)
+            table.scroll_home(animate=False)
+        elif saved_cursor_key and saved_cursor_key in self._row_keys:
             new_idx = self._row_keys.index(saved_cursor_key)
-            table.move_cursor(row=new_idx)
+            table.move_cursor(row=new_idx, animate=False)
         elif saved_cursor_row < len(self._row_keys):
-            table.move_cursor(row=saved_cursor_row)
+            table.move_cursor(row=saved_cursor_row, animate=False)
+        else:
+            # Table shrank — clamp to last row
+            table.move_cursor(row=max(0, len(self._row_keys) - 1), animate=False)
 
     def _render_children(self, table: DataTable, group_key: str, group: ProcessGroup):
         """Render children with role-bucket grouping."""
@@ -492,8 +500,16 @@ class ProcessTree(Widget):
 
     # ─── Interaction ─────────────────────────────────
 
+    _NAV_KEYS = {"up", "down", "pageup", "pagedown", "home", "end", "j", "k"}
+
+    def on_key(self, event) -> None:
+        """Detect when user navigates the table via keyboard."""
+        if event.key in self._NAV_KEYS:
+            self._user_moved_cursor = True
+
     def toggle_selected(self) -> str | None:
         """Toggle expansion of the currently selected item."""
+        self._user_moved_cursor = True  # User is interacting
         row_key = self._get_current_row_key()
         if not row_key:
             return None
