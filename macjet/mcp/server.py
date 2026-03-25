@@ -10,6 +10,7 @@ Usage:
 
 Compatible with: Claude Desktop, Cursor, GARY, any MCP client.
 """
+
 from __future__ import annotations
 
 from collections.abc import AsyncIterator

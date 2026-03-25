@@ -15,6 +15,7 @@ Output:
     scripts/macjet_demo.cast  — raw asciinema recording
     assets/macjet_demo.gif    — final GIF for README
 """
+
 from __future__ import annotations
 
 import asyncio
