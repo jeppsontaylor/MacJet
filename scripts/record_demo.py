@@ -2,38 +2,54 @@
 """
 MacJet Demo Recorder
 Drives the MacJet TUI via a pty, injects keypresses at timed intervals,
-records via asciinema, and converts to GIF via agg.
+records via asciinema v2 cast format, and converts to GIF via agg.
+
+Features:
+  - Cinematic intro: types "sudo macjet" on a realistic shell prompt
+  - Auto-copies the final GIF to assets/ for README embedding
 
 Usage:
-    sudo python3 record_demo.py
+    sudo python3 scripts/record_demo.py
 
 Output:
-    macjet_demo.cast  — raw asciinema recording
-    macjet_demo.gif   — final GIF for README
+    scripts/macjet_demo.cast  — raw asciinema recording
+    assets/macjet_demo.gif    — final GIF for README
 """
+
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import pty
+import random
+import shutil
+import subprocess
 import sys
 import time
-import subprocess
-import json
 from pathlib import Path
 
 # ─── Configuration ───────────────────────────────────
 SCRIPT_DIR = Path(__file__).parent
+REPO_ROOT = SCRIPT_DIR.parent
 CAST_FILE = SCRIPT_DIR / "macjet_demo.cast"
 GIF_FILE = SCRIPT_DIR / "macjet_demo.gif"
+ASSETS_GIF = REPO_ROOT / "assets" / "macjet_demo.gif"
 
 # Terminal size for the recording — wide enough for dual-pane
 COLS = 160
 ROWS = 40
 
+# ─── Cinematic intro ─────────────────────────────────
+SHELL_PROMPT = "\033[38;2;100;220;100m❯\033[0m "  # Green chevron prompt
+TYPING_COMMAND = "sudo macjet"
+CHAR_DELAY_MIN = 0.04  # Seconds between keystrokes (min)
+CHAR_DELAY_MAX = 0.09  # Seconds between keystrokes (max)
+POST_ENTER_PAUSE = 0.8  # Pause after "pressing enter" before TUI loads
+
 # ─── Key escape sequences ────────────────────────────
 KEY_DOWN = b"\x1b[B"
-KEY_UP   = b"\x1b[A"
+KEY_UP = b"\x1b[A"
 KEY_ENTER = b"\r"
 KEY_1 = b"1"
 KEY_2 = b"2"
@@ -106,6 +122,43 @@ DEMO_SCRIPT = [
 ]
 
 
+def find_python() -> str:
+    """Find a working python that can import macjet."""
+    candidates = [
+        str(Path.home() / ".macjet" / "venv" / "bin" / "python"),
+        "python3",
+        sys.executable,
+    ]
+    for candidate in candidates:
+        try:
+            result = subprocess.run(
+                [candidate, "-c", "import macjet"],
+                capture_output=True,
+                timeout=5,
+            )
+            if result.returncode == 0:
+                return candidate
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            continue
+    print("ERROR: Could not find a python with macjet installed.")
+    print("  Install with: pip install -e . (from the repo root)")
+    sys.exit(1)
+
+
+def find_agg() -> str:
+    """Find the agg binary."""
+    # Check common homebrew location first
+    homebrew_agg = Path("/opt/homebrew/bin/agg")
+    if homebrew_agg.exists():
+        return str(homebrew_agg)
+    # Fall back to PATH
+    result = subprocess.run(["which", "agg"], capture_output=True, text=True)
+    if result.returncode == 0:
+        return result.stdout.strip()
+    print("ERROR: agg not found. Install with: brew install agg")
+    sys.exit(1)
+
+
 def write_cast_header(f, cols: int, rows: int):
     """Write asciinema v2 header."""
     header = {
@@ -113,7 +166,7 @@ def write_cast_header(f, cols: int, rows: int):
         "width": cols,
         "height": rows,
         "timestamp": int(time.time()),
-        "env": {"TERM": "xterm-256color", "SHELL": "/bin/bash"},
+        "env": {"TERM": "xterm-256color", "SHELL": "/bin/zsh"},
         "title": "MacJet — Flight Deck Demo",
     }
     f.write(json.dumps(header) + "\n")
@@ -125,10 +178,44 @@ def write_cast_event(f, ts: float, event_type: str, data: str):
     f.write(json.dumps(event) + "\n")
 
 
-async def run_demo():
-    """Run the demo: launch MacJet in a pty and inject keypresses."""
-    print(f"Recording to {CAST_FILE}")
-    print(f"Terminal: {COLS}×{ROWS}")
+def record_typing_intro(f) -> float:
+    """Record a cinematic shell intro: prompt + typing 'sudo macjet' + enter.
+
+    Writes directly to the cast file as synthetic output events.
+    Returns the total duration consumed by the intro.
+    """
+    ts = 0.0
+
+    # Initial blank line pause (feels like terminal just opened)
+    ts += 0.6
+    write_cast_event(f, ts, "o", SHELL_PROMPT)
+
+    # Brief pause after prompt appears (human reaction time)
+    ts += 0.4
+
+    # Type the command character by character
+    for ch in TYPING_COMMAND:
+        delay = random.uniform(CHAR_DELAY_MIN, CHAR_DELAY_MAX)
+        ts += delay
+        write_cast_event(f, ts, "o", ch)
+
+    # Pause before pressing enter (human thinks: "looks right")
+    ts += 0.35
+
+    # "Press enter" — show a newline
+    write_cast_event(f, ts, "o", "\r\n")
+
+    # Small loading pause before TUI takes over
+    ts += POST_ENTER_PAUSE
+
+    return ts
+
+
+async def run_demo(python_path: str):
+    """Run the demo: record typing intro, then launch MacJet in a pty."""
+    print(f"  Recording to {CAST_FILE}")
+    print(f"  Terminal: {COLS}×{ROWS}")
+    print(f"  Python: {python_path}")
     print()
 
     # Set our terminal size env
@@ -138,14 +225,17 @@ async def run_demo():
     env["COLUMNS"] = str(COLS)
     env["LINES"] = str(ROWS)
 
-    # Find the venv python
-    venv_python = Path.home() / ".macjet" / "venv" / "bin" / "python"
-    if not venv_python.exists():
-        venv_python = "python3"
-
-    # Open cast file
+    # Open cast file and write header
     cast_file = open(CAST_FILE, "w", encoding="utf-8")
     write_cast_header(cast_file, COLS, ROWS)
+
+    # ─── Phase 1: Cinematic typing intro ─────────────
+    print("  Phase 1: Recording typing intro...")
+    intro_duration = record_typing_intro(cast_file)
+    print(f"  Intro duration: {intro_duration:.1f}s")
+
+    # ─── Phase 2: Launch MacJet in a pty ─────────────
+    print("  Phase 2: Launching MacJet TUI...")
 
     # Create a pty pair
     master_fd, slave_fd = pty.openpty()
@@ -153,42 +243,39 @@ async def run_demo():
     # Set terminal size on the slave
     try:
         import fcntl
-        import termios
         import struct
+        import termios
+
         winsize = struct.pack("HHHH", ROWS, COLS, 0, 0)
         fcntl.ioctl(slave_fd, termios.TIOCSWINSZ, winsize)
     except Exception as e:
-        print(f"Warning: couldn't set terminal size: {e}")
+        print(f"  Warning: couldn't set terminal size: {e}")
 
     # Launch MacJet
     proc = await asyncio.create_subprocess_exec(
-        str(venv_python), "-m", "macjet",
+        python_path,
+        "-m",
+        "macjet",
         stdin=slave_fd,
         stdout=slave_fd,
         stderr=slave_fd,
         env=env,
-        cwd=str(SCRIPT_DIR),
+        cwd=str(REPO_ROOT),
     )
     os.close(slave_fd)
 
-    start_time = time.time()
-    output_buffer = b""
+    wall_start = time.time()
 
-    # Background reader task
+    # Background reader task — captures TUI output with timestamps offset
+    # by the intro duration so the timeline is seamless
     async def reader():
-        nonlocal output_buffer
         loop = asyncio.get_event_loop()
         while True:
             try:
-                data = await loop.run_in_executor(
-                    None,
-                    lambda: os.read(master_fd, 4096)
-                )
+                data = await loop.run_in_executor(None, lambda: os.read(master_fd, 4096))
                 if not data:
                     break
-                output_buffer += data
-                ts = time.time() - start_time
-                # Write to cast file
+                ts = intro_duration + (time.time() - wall_start)
                 try:
                     text = data.decode("utf-8", errors="replace")
                     write_cast_event(cast_file, ts, "o", text)
@@ -236,46 +323,65 @@ async def run_demo():
         pass
 
     cast_file.close()
-    duration = time.time() - start_time
-    print(f"Recording complete: {CAST_FILE}")
-    print(f"Duration: {duration:.1f}s")
-    print(f"Size: {CAST_FILE.stat().st_size} bytes")
+    total = intro_duration + (time.time() - wall_start)
+    print(f"  Recording complete: {CAST_FILE}")
+    print(f"  Total duration: {total:.1f}s")
+    print(f"  Cast size: {CAST_FILE.stat().st_size} bytes")
 
 
-def convert_to_gif():
+def convert_to_gif(agg_path: str) -> bool:
     """Convert the .cast file to an animated GIF using agg."""
-    print(f"\nConverting to GIF: {GIF_FILE}")
-
-    agg_path = subprocess.run(
-        ["which", "agg"], capture_output=True, text=True
-    ).stdout.strip() or "agg"
+    print("\n  Converting to GIF...")
 
     cmd = [
         agg_path,
-        "--cols", str(COLS),
-        "--rows", str(ROWS),
-        "--font-family", "JetBrains Mono,SF Mono,Menlo,Consolas",
-        "--font-size", "13",
-        "--speed", "1.3",          # Slightly faster playback for reel feel
-        "--idle-time-limit", "2",  # Cap idle pauses at 2s
-        "--theme", "github-dark",  # Clean dark theme matching our palette
+        "--cols",
+        str(COLS),
+        "--rows",
+        str(ROWS),
+        "--font-family",
+        "JetBrains Mono,SF Mono,Menlo,Consolas",
+        "--font-size",
+        "13",
+        "--speed",
+        "1.3",  # Slightly faster for reel feel
+        "--idle-time-limit",
+        "2",  # Cap idle pauses at 2s
+        "--last-frame-duration",
+        "3",  # Hold last frame 3s
+        "--theme",
+        "monokai",  # Rich colors matching flight deck palette
         str(CAST_FILE),
         str(GIF_FILE),
     ]
 
-    print(f"Running: {' '.join(cmd)}")
+    print(f"  Running: {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode == 0:
         size_mb = GIF_FILE.stat().st_size / (1024 * 1024)
-        print(f"GIF created: {GIF_FILE} ({size_mb:.1f} MB)")
+        print(f"  GIF created: {GIF_FILE} ({size_mb:.1f} MB)")
         return True
     else:
-        print(f"agg error: {result.stderr}")
+        print(f"  agg error: {result.stderr}")
+        return False
+
+
+def copy_to_assets() -> bool:
+    """Copy the generated GIF to the assets directory."""
+    try:
+        ASSETS_GIF.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(GIF_FILE, ASSETS_GIF)
+        size_mb = ASSETS_GIF.stat().st_size / (1024 * 1024)
+        print(f"  Copied to: {ASSETS_GIF} ({size_mb:.1f} MB)")
+        return True
+    except Exception as e:
+        print(f"  Error copying to assets: {e}")
         return False
 
 
 if __name__ == "__main__":
     import platform
+
     if platform.system() != "Darwin":
         print("This script is macOS-only")
         sys.exit(1)
@@ -283,16 +389,32 @@ if __name__ == "__main__":
     print("=" * 60)
     print("  MacJet Demo Recorder")
     print("=" * 60)
+    print()
 
-    asyncio.run(run_demo())
-    success = convert_to_gif()
+    # Pre-flight checks
+    python_path = find_python()
+    agg_path = find_agg()
+    print(f"  ✓ Python: {python_path}")
+    print(f"  ✓ agg:    {agg_path}")
+    print()
+
+    # Record
+    asyncio.run(run_demo(python_path))
+
+    # Convert
+    success = convert_to_gif(agg_path)
 
     if success:
-        print("\n✅ Demo complete!")
-        print(f"   Cast: {CAST_FILE}")
-        print(f"   GIF:  {GIF_FILE}")
-        print(f"\nFor README.md:")
-        print(f"   ![MacJet Demo](macjet_demo.gif)")
+        copy_to_assets()
+        print()
+        print("  ✅ Demo complete!")
+        print(f"     Cast:   {CAST_FILE}")
+        print(f"     GIF:    {GIF_FILE}")
+        print(f"     Assets: {ASSETS_GIF}")
+        print()
+        print("  For README.md:")
+        print("     ![MacJet Demo](assets/macjet_demo.gif)")
     else:
-        print("\n❌ GIF conversion failed. Check cast file manually:")
-        print(f"   agg --theme dracula {CAST_FILE} {GIF_FILE}")
+        print()
+        print("  ❌ GIF conversion failed. Check cast file manually:")
+        print(f"     agg --theme monokai {CAST_FILE} {GIF_FILE}")

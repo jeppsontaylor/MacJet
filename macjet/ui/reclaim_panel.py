@@ -2,12 +2,12 @@
 MacJet — Reclaim Panel (Kill List)
 Scored recommendation view showing which processes to kill and why.
 """
+
 from __future__ import annotations
 
-from textual.widget import Widget
 from textual.app import ComposeResult
-from textual.widgets import Static, DataTable
-from textual.containers import Vertical
+from textual.widget import Widget
+from textual.widgets import DataTable, Static
 
 from ..collectors.metrics_history import ReclaimCandidate
 
@@ -69,7 +69,7 @@ class ReclaimPanel(Widget):
     def compose(self) -> ComposeResult:
         yield Static(
             "  RECLAIM  [#7F8DB3]Scored recommendations • q:Quit App • k:Kill • K:Force Kill[/]",
-            id="reclaim-toolbar"
+            id="reclaim-toolbar",
         )
         table = DataTable(id="reclaim-table", cursor_type="row")
         table.add_column("", key="rail", width=1)
@@ -130,8 +130,13 @@ class ReclaimPanel(Widget):
 
             row_key = f"reclaim-{candidate.group_key}"
             table.add_row(
-                rail, score_str, app_str, reclaim_str,
-                risk_str, reason, action_str,
+                rail,
+                score_str,
+                app_str,
+                reclaim_str,
+                risk_str,
+                reason,
+                action_str,
                 key=row_key,
             )
             self._row_keys.append(row_key)

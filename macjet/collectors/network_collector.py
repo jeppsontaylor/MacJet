@@ -2,11 +2,12 @@
 MacJet — Network Collector
 Delta-sampling of per-process network I/O via psutil.
 """
+
 from __future__ import annotations
 
 import asyncio
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import psutil
 
@@ -14,6 +15,7 @@ import psutil
 @dataclass
 class NetSnapshot:
     """System-wide network snapshot with deltas."""
+
     bytes_sent: int = 0
     bytes_recv: int = 0
     bytes_sent_per_s: float = 0.0

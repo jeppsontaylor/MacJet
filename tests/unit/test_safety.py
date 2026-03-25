@@ -1,18 +1,16 @@
 """
 Tests for the Safety module — PID validation, signal dispatch, and audit logging.
 """
+
 from __future__ import annotations
 
 import json
 import os
-import signal
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-import pytest
-
-from macjet.mcp.safety import validate_pid, resolve_pid, send_signal, get_audit_log, MIN_SAFE_PID
+from macjet.mcp.safety import MIN_SAFE_PID, get_audit_log, resolve_pid, validate_pid
 
 
 class TestValidatePid:
@@ -77,6 +75,7 @@ class TestResolvePid:
     @patch("macjet.mcp.safety.psutil.Process")
     def test_handles_no_such_process(self, MockProcess):
         import psutil
+
         MockProcess.side_effect = psutil.NoSuchProcess(9999)
         result = resolve_pid(9999)
         assert result["name"] == "unknown"

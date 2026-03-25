@@ -2,6 +2,7 @@
 MacJet MCP — Pydantic response models for structured output.
 Every tool returns one of these models so agents get typed JSON schemas.
 """
+
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
@@ -10,6 +11,7 @@ from pydantic import BaseModel, Field
 # ── System Overview ──────────────────────────────────────────
 class SystemOverview(BaseModel):
     """Concise snapshot of system health."""
+
     cpu_percent: float = Field(description="Overall CPU usage 0–100+")
     memory_used_gb: float = Field(description="RAM used in GB")
     memory_total_gb: float = Field(description="Total RAM in GB")
@@ -25,6 +27,7 @@ class SystemOverview(BaseModel):
 # ── Process List ─────────────────────────────────────────────
 class ProcessSummary(BaseModel):
     """Summary of one process group."""
+
     name: str
     pid_count: int = Field(description="Number of processes in this group")
     top_pid: int = Field(description="PID of the highest-CPU process in the group")
@@ -36,6 +39,7 @@ class ProcessSummary(BaseModel):
 
 class ProcessListResult(BaseModel):
     """Result from list_processes or search_processes."""
+
     groups: list[ProcessSummary]
     total_groups: int = Field(description="Total groups before limit was applied")
     sort_by: str
@@ -45,6 +49,7 @@ class ProcessListResult(BaseModel):
 # ── Process Detail ───────────────────────────────────────────
 class ChildProcess(BaseModel):
     """A child process within a group."""
+
     pid: int
     name: str
     cpu_percent: float
@@ -57,19 +62,23 @@ class ChildProcess(BaseModel):
 
 class ProcessDetail(BaseModel):
     """Deep-dive into a specific process or group."""
+
     name: str
     total_cpu: float
     total_memory_mb: float
     energy_impact: str = ""
     process_count: int
     children: list[ChildProcess]
-    chrome_tabs: list[ChromeTab] | None = Field(default=None, description="Chrome tabs if applicable")
+    chrome_tabs: list[ChromeTab] | None = Field(
+        default=None, description="Chrome tabs if applicable"
+    )
     why_hot: str = Field(default="", description="Plain-English explanation of resource usage")
 
 
 # ── Chrome Tabs ──────────────────────────────────────────────
 class ChromeTab(BaseModel):
     """A single Chrome tab mapped to a renderer PID."""
+
     rank: int
     title: str
     url: str
@@ -80,6 +89,7 @@ class ChromeTab(BaseModel):
 
 class ChromeTabsResult(BaseModel):
     """Result from get_chrome_tabs."""
+
     tabs: list[ChromeTab]
     total_tabs: int
     cdp_connected: bool
@@ -88,6 +98,7 @@ class ChromeTabsResult(BaseModel):
 # ── Heat Explanation ─────────────────────────────────────────
 class HeatExplanation(BaseModel):
     """Structured diagnosis of why the machine is hot."""
+
     severity: str = Field(description="cool | warm | hot | critical")
     cpu_percent: float
     primary_culprit: str
@@ -100,11 +111,13 @@ class HeatExplanation(BaseModel):
 # ── Kill / Suspend ───────────────────────────────────────────
 class KillConfirmation(BaseModel):
     """Schema for elicitation-based kill confirmation."""
+
     confirm: bool = Field(default=False, description="Confirm killing this process?")
 
 
 class KillResult(BaseModel):
     """Result from kill_process or force_kill_process."""
+
     action: str = Field(description="SIGTERM | SIGKILL | preview | declined | error")
     pid: int
     name: str
@@ -115,6 +128,7 @@ class KillResult(BaseModel):
 
 class SuspendResult(BaseModel):
     """Result from suspend_process or resume_process."""
+
     action: str = Field(description="SIGSTOP | SIGCONT | declined | error")
     pid: int
     name: str
@@ -125,6 +139,7 @@ class SuspendResult(BaseModel):
 # ── Energy Report ────────────────────────────────────────────
 class EnergyEntry(BaseModel):
     """One app's energy impact."""
+
     name: str
     energy_impact: float
     category: str = Field(default="", description="HIGH | MED | LOW")
@@ -132,6 +147,7 @@ class EnergyEntry(BaseModel):
 
 class EnergyReport(BaseModel):
     """Per-app energy breakdown from powermetrics."""
+
     available: bool = Field(description="Whether powermetrics data is available")
     entries: list[EnergyEntry] = Field(default_factory=list)
     cpu_power_w: float | None = None
@@ -141,6 +157,7 @@ class EnergyReport(BaseModel):
 # ── Network Activity ─────────────────────────────────────────
 class NetworkEntry(BaseModel):
     """One process group's network I/O."""
+
     name: str
     bytes_sent: int
     bytes_recv: int
@@ -149,6 +166,7 @@ class NetworkEntry(BaseModel):
 
 class NetworkReport(BaseModel):
     """Top processes by network bytes."""
+
     entries: list[NetworkEntry]
     system_bytes_sent: int = 0
     system_bytes_recv: int = 0

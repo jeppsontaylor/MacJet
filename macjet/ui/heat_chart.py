@@ -2,18 +2,22 @@
 MacJet — Heat Chart Widget
 Real-time CPU/GPU/Energy timeline using textual-plot.
 """
+
 from __future__ import annotations
 
 from collections import deque
-from textual.widget import Widget
+
 from textual.app import ComposeResult
+from textual.widget import Widget
 
 try:
-    from textual_plot import PlotWidget, PlotExtPlot
+    from textual_plot import PlotExtPlot, PlotWidget  # noqa: F401
+
     HAS_PLOT = True
 except ImportError:
     try:
-        from textual_plotext import PlotextPlot
+        from textual_plotext import PlotextPlot  # noqa: F401
+
         HAS_PLOT = True
     except ImportError:
         HAS_PLOT = False
@@ -56,14 +60,22 @@ class HeatChart(Widget):
         if HAS_PLOT:
             try:
                 from textual_plotext import PlotextPlot
+
                 self._plot_widget = PlotextPlot()
                 yield self._plot_widget
             except Exception:
                 from textual.widgets import Static
-                yield Static("  📊 Charts require textual-plot or textual-plotext", classes="no-chart")
+
+                yield Static(
+                    "  📊 Charts require textual-plot or textual-plotext", classes="no-chart"
+                )
         else:
             from textual.widgets import Static
-            yield Static("  📊 Install textual-plotext for charts: pip install textual-plotext", classes="no-chart")
+
+            yield Static(
+                "  📊 Install textual-plotext for charts: pip install textual-plotext",
+                classes="no-chart",
+            )
 
     def push_data(self, cpu: float, gpu: float = 0.0, energy: float = 0.0):
         """Push new data point to the history."""

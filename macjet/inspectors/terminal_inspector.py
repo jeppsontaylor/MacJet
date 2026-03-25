@@ -2,6 +2,7 @@
 MacJet — Terminal Inspector
 Detects foreground processes in Terminal.app, iTerm2, Ghostty, Kitty, etc.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -22,8 +23,14 @@ class TerminalInspector:
     """Inspects terminal emulators for tab titles and foreground processes."""
 
     _TERMINAL_APPS = {
-        "Terminal", "iTerm2", "iTerm", "Ghostty", "kitty",
-        "Alacritty", "WezTerm", "Hyper",
+        "Terminal",
+        "iTerm2",
+        "iTerm",
+        "Ghostty",
+        "kitty",
+        "Alacritty",
+        "WezTerm",
+        "Hyper",
     }
 
     def is_terminal(self, app_name: str) -> bool:
@@ -50,7 +57,7 @@ class TerminalInspector:
         elif "terminal" in app_name.lower():
             se_name = "Terminal"
 
-        script = f'''
+        script = f"""
 tell application "System Events"
     tell process "{se_name}"
         try
@@ -60,10 +67,12 @@ tell application "System Events"
         end try
     end tell
 end tell
-'''
+"""
         try:
             proc = await asyncio.create_subprocess_exec(
-                "osascript", "-e", script,
+                "osascript",
+                "-e",
+                script,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.DEVNULL,
             )

@@ -3,13 +3,16 @@ Tests for the EnergyCollector — plist parsing and energy label generation.
 
 These test the parser directly without requiring a live powermetrics subprocess.
 """
+
 from __future__ import annotations
 
 import plistlib
 
-import pytest
-
-from macjet.collectors.energy_collector import EnergyCollector, EnergySnapshot, EnergyInfo, ThermalInfo
+from macjet.collectors.energy_collector import (
+    EnergyCollector,
+    EnergyInfo,
+    EnergySnapshot,
+)
 
 
 def _make_plist(
@@ -36,10 +39,12 @@ class TestPlistParsing:
 
     def test_parses_tasks(self):
         ec = EnergyCollector()
-        plist = _make_plist(tasks=[
-            {"pid": 100, "name": "Chrome", "energy_impact": 42.5, "wakeups_per_s": 80.0},
-            {"pid": 200, "name": "node", "energy_impact": 15.0},
-        ])
+        plist = _make_plist(
+            tasks=[
+                {"pid": 100, "name": "Chrome", "energy_impact": 42.5, "wakeups_per_s": 80.0},
+                {"pid": 200, "name": "node", "energy_impact": 15.0},
+            ]
+        )
         ec._parse_plist(plist)
 
         assert 100 in ec.latest.processes
@@ -96,30 +101,38 @@ class TestEnergyLabels:
 
     def test_high_energy(self):
         ec = EnergyCollector()
-        ec._latest = EnergySnapshot(processes={
-            1: EnergyInfo(pid=1, name="Hot", energy_impact=60.0),
-        })
+        ec._latest = EnergySnapshot(
+            processes={
+                1: EnergyInfo(pid=1, name="Hot", energy_impact=60.0),
+            }
+        )
         assert ec.get_energy_label(1) == "HIGH"
 
     def test_medium_energy(self):
         ec = EnergyCollector()
-        ec._latest = EnergySnapshot(processes={
-            1: EnergyInfo(pid=1, name="Warm", energy_impact=30.0),
-        })
+        ec._latest = EnergySnapshot(
+            processes={
+                1: EnergyInfo(pid=1, name="Warm", energy_impact=30.0),
+            }
+        )
         assert ec.get_energy_label(1) == "MED"
 
     def test_low_energy(self):
         ec = EnergyCollector()
-        ec._latest = EnergySnapshot(processes={
-            1: EnergyInfo(pid=1, name="Cool", energy_impact=10.0),
-        })
+        ec._latest = EnergySnapshot(
+            processes={
+                1: EnergyInfo(pid=1, name="Cool", energy_impact=10.0),
+            }
+        )
         assert ec.get_energy_label(1) == "LOW"
 
     def test_negligible_energy(self):
         ec = EnergyCollector()
-        ec._latest = EnergySnapshot(processes={
-            1: EnergyInfo(pid=1, name="Idle", energy_impact=2.0),
-        })
+        ec._latest = EnergySnapshot(
+            processes={
+                1: EnergyInfo(pid=1, name="Idle", energy_impact=2.0),
+            }
+        )
         assert ec.get_energy_label(1) == ""
 
     def test_unknown_pid(self):

@@ -2,13 +2,12 @@
 MacJet — Fast-lane Process Collector (250ms)
 Uses psutil to enumerate processes, build trees, and group by coalition/app.
 """
+
 from __future__ import annotations
 
 import asyncio
-import os
 import time
 from dataclasses import dataclass, field
-from typing import Optional
 
 import psutil
 
@@ -18,6 +17,7 @@ from .metrics_history import MetricsHistory
 @dataclass
 class ProcessInfo:
     """Snapshot of a single process."""
+
     pid: int
     name: str
     cpu_percent: float = 0.0
@@ -48,6 +48,7 @@ class ProcessInfo:
 @dataclass
 class ProcessGroup:
     """A group of related processes (coalition/app/tree root)."""
+
     name: str
     icon: str = "🟢"
     total_cpu: float = 0.0
@@ -152,12 +153,27 @@ def _determine_group_key(proc_info: ProcessInfo) -> str:
 
 
 # System usernames that indicate a system/daemon process
-_SYSTEM_USERS = frozenset({
-    "root", "_windowserver", "_mdnsresponder", "_coreaudiod",
-    "_locationd", "_spotlight", "_securityagent", "_usbmuxd",
-    "_distnoted", "_networkd", "_appleevents", "_softwareupdate",
-    "_nsurlsessiond", "_trustd", "_timed", "nobody", "daemon",
-})
+_SYSTEM_USERS = frozenset(
+    {
+        "root",
+        "_windowserver",
+        "_mdnsresponder",
+        "_coreaudiod",
+        "_locationd",
+        "_spotlight",
+        "_securityagent",
+        "_usbmuxd",
+        "_distnoted",
+        "_networkd",
+        "_appleevents",
+        "_softwareupdate",
+        "_nsurlsessiond",
+        "_trustd",
+        "_timed",
+        "nobody",
+        "daemon",
+    }
+)
 
 
 def _extract_role_type(cmdline: list[str]) -> str:
@@ -172,8 +188,12 @@ def _is_system_process(username: str, exe: str) -> bool:
     """Determine if a process is a system/daemon process."""
     if username in _SYSTEM_USERS:
         return True
-    if exe and (exe.startswith("/usr/") or exe.startswith("/System/") or
-                exe.startswith("/sbin/") or exe.startswith("/Library/Apple/")):
+    if exe and (
+        exe.startswith("/usr/")
+        or exe.startswith("/System/")
+        or exe.startswith("/sbin/")
+        or exe.startswith("/Library/Apple/")
+    ):
         return True
     return False
 
@@ -252,7 +272,8 @@ class ProcessCollector:
                         pid=proc.pid,
                         name=proc.name() or "",
                         cpu_percent=proc.cpu_percent() or 0.0,
-                        memory_mb=(_safe_get(proc, "memory_info") or type("", (), {"rss": 0})).rss / (1024 * 1024),
+                        memory_mb=(_safe_get(proc, "memory_info") or type("", (), {"rss": 0})).rss
+                        / (1024 * 1024),
                         memory_percent=proc.memory_percent() or 0.0,
                         num_threads=_safe_get(proc, "num_threads") or 0,
                         cmdline=_safe_get(proc, "cmdline") or [],
@@ -269,7 +290,9 @@ class ProcessCollector:
                     # New Flight Deck fields
                     info.role_type = _extract_role_type(info.cmdline)
                     info.is_system = _is_system_process(info.username, info.exe)
-                    info.launch_age_s = time.time() - info.create_time if info.create_time > 0 else 0.0
+                    info.launch_age_s = (
+                        time.time() - info.create_time if info.create_time > 0 else 0.0
+                    )
                     # Record into ring buffer
                     self.metrics_history.record(info.pid, info.cpu_percent, info.memory_mb)
                     procs.append(info)
@@ -290,9 +313,13 @@ class ProcessCollector:
 
         # Filter
         if self._filter_text:
-            procs = [p for p in procs if self._filter_text in p.name.lower()
-                     or self._filter_text in p.context_label.lower()
-                     or self._filter_text in " ".join(p.cmdline).lower()]
+            procs = [
+                p
+                for p in procs
+                if self._filter_text in p.name.lower()
+                or self._filter_text in p.context_label.lower()
+                or self._filter_text in " ".join(p.cmdline).lower()
+            ]
 
         # Group
         groups: dict[str, ProcessGroup] = {}
@@ -322,16 +349,16 @@ class ProcessCollector:
             for g in groups.values():
                 g.icon = _severity_icon(g.total_cpu)
                 if len(g.processes) > 1:
-                    g.confidence = "app-exact" if any(
-                        p.confidence in ("exact", "window-exact") for p in g.processes
-                    ) else "grouped"
+                    g.confidence = (
+                        "app-exact"
+                        if any(p.confidence in ("exact", "window-exact") for p in g.processes)
+                        else "grouped"
+                    )
                 elif g.processes:
                     g.confidence = g.processes[0].confidence
 
         # Sort groups by total CPU
-        sorted_groups = dict(
-            sorted(groups.items(), key=lambda x: x[1].total_cpu, reverse=True)
-        )
+        sorted_groups = dict(sorted(groups.items(), key=lambda x: x[1].total_cpu, reverse=True))
 
         self._all_procs = procs
         self._groups = sorted_groups
@@ -346,7 +373,7 @@ def get_system_stats() -> dict:
     """Get overall system stats."""
     cpu_percent = psutil.cpu_percent(interval=None)
     mem = psutil.virtual_memory()
-    
+
     # Network
     net = psutil.net_io_counters()
 

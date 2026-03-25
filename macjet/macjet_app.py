@@ -4,37 +4,34 @@ MacJet V4 — Flight Deck Application
 The ultimate macOS developer dashboard. Rebuilt with an adaptive
 flight deck layout, app-first views, and intelligent Kill List.
 """
+
 from __future__ import annotations
 
-import asyncio
 import os
 import signal
-import sys
-import time
 from pathlib import Path
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
-from textual.widgets import Static, Footer, Input, DataTable, ContentSwitcher
+from textual.containers import Horizontal
+from textual.widgets import ContentSwitcher, DataTable, Footer, Input, Static
+
+from .collectors.energy_collector import EnergyCollector
+from .collectors.network_collector import NetworkCollector, format_bytes_per_s
 
 # Local imports
 from .collectors.process_collector import ProcessCollector, ProcessGroup, get_system_stats
-from .collectors.energy_collector import EnergyCollector
-from .collectors.network_collector import NetworkCollector, format_bytes_per_s
-from .collectors.metrics_history import MetricsHistory
 from .inspectors.browser_inspector import BrowserInspector
-from .inspectors.ide_inspector import IDEInspector
-from .inspectors.container_inspector import ContainerInspector
-from .inspectors.terminal_inspector import TerminalInspector
-from .inspectors.generic_inspector import GenericInspector
 from .inspectors.chrome_tab_mapper import ChromeTabMapper, auto_detect_cdp_port
+from .inspectors.container_inspector import ContainerInspector
+from .inspectors.generic_inspector import GenericInspector
+from .inspectors.ide_inspector import IDEInspector
+from .inspectors.terminal_inspector import TerminalInspector
+from .ui.detail_panel import DetailPanel
+from .ui.drill_screens import FsUsageScreen, NettopScreen, SampleScreen, ScUsageScreen
 from .ui.header import SystemHeader
 from .ui.process_tree import ProcessTree
-from .ui.detail_panel import DetailPanel
 from .ui.reclaim_panel import ReclaimPanel
-from .ui.drill_screens import SampleScreen, FsUsageScreen, NettopScreen, ScUsageScreen
-
 
 CSS_PATH = Path(__file__).parent / "ui" / "theme.tcss"
 
@@ -153,7 +150,7 @@ class MacJetApp(App):
             else:
                 parts.append(f"[#7F8DB3] {idx}:{label} [/]")
             parts.append("[#1A2540]│[/]")
-        parts.append(f"  [#7F8DB3]Tab:cycle  /:filter  ?:help[/]")
+        parts.append("  [#7F8DB3]Tab:cycle  /:filter  ?:help[/]")
         return "".join(parts)
 
     def _switch_view(self, view: str):
@@ -211,13 +208,14 @@ class MacJetApp(App):
                     "energy/thermal data:\n\n"
                     "  sudo ./macjet.sh\n\n"
                     "Basic CPU/memory\n"
-                    "monitoring is active."
+                    "monitoring is active.",
                 )
             except Exception:
                 pass
 
         # Prime CPU percent
         import psutil
+
         psutil.cpu_percent(interval=None)
 
         # Start collection lanes
@@ -243,10 +241,7 @@ class MacJetApp(App):
 
         # Filter system processes if hidden
         if self._hide_system:
-            groups = {
-                k: g for k, g in groups.items()
-                if not all(p.is_system for p in g.processes)
-            }
+            groups = {k: g for k, g in groups.items() if not all(p.is_system for p in g.processes)}
 
         self._groups = groups
 
@@ -301,6 +296,7 @@ class MacJetApp(App):
         # Swap
         try:
             import psutil
+
             swap = psutil.swap_memory()
             header.swap_used = swap.used / (1024**3)
         except Exception:
@@ -322,6 +318,7 @@ class MacJetApp(App):
         # Self overhead
         try:
             import psutil
+
             self_proc = psutil.Process(self._self_pid)
             header.self_cpu = self_proc.cpu_percent()
         except Exception:
@@ -350,9 +347,7 @@ class MacJetApp(App):
                         break
 
             # Determine if hidden (heuristic: no process is frontmost)
-            is_hidden = all(
-                p.is_hidden or p.is_system for p in group.processes
-            )
+            is_hidden = all(p.is_hidden or p.is_system for p in group.processes)
 
             candidate = history.compute_reclaim_score(
                 group_key=key,
@@ -515,6 +510,7 @@ class MacJetApp(App):
             pid = self._get_active_pid()
             if pid:
                 import psutil
+
                 proc = psutil.Process(pid)
                 if proc.status() == "stopped":
                     proc.resume()
@@ -554,6 +550,7 @@ class MacJetApp(App):
                 self.notify("Can't kill myself!", timeout=2, severity="warning")
                 return
             import psutil
+
             proc = psutil.Process(pid)
             proc.send_signal(sig)
             self.notify(f"{action_name} PID {pid}", timeout=2)

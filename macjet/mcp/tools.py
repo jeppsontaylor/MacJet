@@ -2,16 +2,15 @@
 MacJet MCP — Tool handler implementations.
 All business logic for the 10 MCP tools.
 """
+
 from __future__ import annotations
 
 import signal
-from typing import Any
 
-import psutil
-
-from macjet.collectors.process_collector import ProcessCollector, ProcessGroup, get_system_stats
 from macjet.collectors.energy_collector import EnergyCollector
+from macjet.collectors.process_collector import ProcessCollector, ProcessGroup, get_system_stats
 from macjet.inspectors.chrome_tab_mapper import ChromeTabMapper
+from macjet.mcp import safety
 from macjet.mcp.cache import AsyncTTLCache
 from macjet.mcp.models import (
     ChildProcess,
@@ -29,10 +28,9 @@ from macjet.mcp.models import (
     SuspendResult,
     SystemOverview,
 )
-from macjet.mcp import safety
-
 
 # ── Helpers ──────────────────────────────────────────────────
+
 
 async def _get_groups(
     proc_collector: ProcessCollector,
@@ -41,6 +39,7 @@ async def _get_groups(
     cache: AsyncTTLCache,
 ) -> dict[str, ProcessGroup]:
     """Collect enriched process groups via cache."""
+
     async def _collect():
         procs, groups = await proc_collector.collect()
 
@@ -79,7 +78,9 @@ def _group_to_summary(name: str, group: ProcessGroup) -> ProcessSummary:
     top_proc = max(group.processes, key=lambda p: p.cpu_percent) if group.processes else None
     child_energies = [p.energy_impact for p in group.processes if p.energy_impact]
     energy_order = {"HIGH": 3, "MED": 2, "LOW": 1}
-    worst_energy = max(child_energies, key=lambda e: energy_order.get(e, 0)) if child_energies else ""
+    worst_energy = (
+        max(child_energies, key=lambda e: energy_order.get(e, 0)) if child_energies else ""
+    )
 
     return ProcessSummary(
         name=name,
@@ -96,9 +97,12 @@ def _thermal_pressure() -> str:
     """Get macOS thermal pressure level."""
     try:
         import subprocess
+
         result = subprocess.run(
             ["sysctl", "-n", "machdep.xcpm.cpu_thermal_level"],
-            capture_output=True, text=True, timeout=2,
+            capture_output=True,
+            text=True,
+            timeout=2,
         )
         level = int(result.stdout.strip()) if result.returncode == 0 else 0
         if level >= 100:
@@ -113,6 +117,7 @@ def _thermal_pressure() -> str:
 
 
 # ── Tool Implementations ────────────────────────────────────
+
 
 async def handle_get_system_overview(
     proc_collector: ProcessCollector,
@@ -169,8 +174,10 @@ async def handle_list_processes(
     if filter:
         fl = filter.lower()
         groups = {
-            k: v for k, v in groups.items()
-            if fl in k.lower() or any(fl in p.name.lower() or fl in p.context_label.lower() for p in v.processes)
+            k: v
+            for k, v in groups.items()
+            if fl in k.lower()
+            or any(fl in p.name.lower() or fl in p.context_label.lower() for p in v.processes)
         }
 
     # Sort
@@ -178,7 +185,10 @@ async def handle_list_processes(
         "cpu": lambda x: x[1].total_cpu,
         "memory": lambda x: x[1].total_memory_mb,
         "name": lambda x: x[0].lower(),
-        "energy": lambda x: max(({"HIGH": 3, "MED": 2, "LOW": 1}.get(p.energy_impact, 0) for p in x[1].processes), default=0),
+        "energy": lambda x: max(
+            ({"HIGH": 3, "MED": 2, "LOW": 1}.get(p.energy_impact, 0) for p in x[1].processes),
+            default=0,
+        ),
     }
     sort_fn = sort_fns.get(sort_by, sort_fns["cpu"])
     reverse = sort_by != "name"
@@ -230,8 +240,11 @@ async def handle_get_process_detail(
     if not target_group:
         return ProcessDetail(
             name=name or str(pid),
-            total_cpu=0, total_memory_mb=0, process_count=0,
-            children=[], why_hot="Process not found.",
+            total_cpu=0,
+            total_memory_mb=0,
+            process_count=0,
+            children=[],
+            why_hot="Process not found.",
         )
 
     # Build children
@@ -352,7 +365,13 @@ async def handle_explain_heat(
     secondary = [f"{name} ({g.total_cpu:.0f}% CPU)" for name, g in sorted_groups[1:4]]
 
     # Build markdown report
-    report_lines = [f"## System Heat Diagnosis", f"", f"**Overall CPU:** {cpu:.1f}%", f"**Thermal:** {_thermal_pressure()}", ""]
+    report_lines = [
+        "## System Heat Diagnosis",
+        "",
+        f"**Overall CPU:** {cpu:.1f}%",
+        f"**Thermal:** {_thermal_pressure()}",
+        "",
+    ]
     report_lines.append(f"### Primary: {primary[0]} ({primary[1].total_cpu:.0f}% CPU)")
     for p in sorted(primary[1].processes, key=lambda p: p.cpu_percent, reverse=True)[:5]:
         label = p.context_label or p.name
@@ -367,11 +386,13 @@ async def handle_explain_heat(
     # Recommendations
     recs = []
     if primary[1].total_cpu > 100:
-        recs.append(f"Consider closing or restarting {primary[0]} (using {primary[1].total_cpu:.0f}% CPU)")
+        recs.append(
+            f"Consider closing or restarting {primary[0]} (using {primary[1].total_cpu:.0f}% CPU)"
+        )
     if "chrome" in primary[0].lower() and chrome_mapper.latest.has_cdp:
         top_tabs = sorted(chrome_mapper.latest.tabs, key=lambda t: t.cpu_time, reverse=True)[:3]
         for t in top_tabs:
-            recs.append(f"Close Chrome tab: \"{t.title}\" ({t.cpu_time:.0f}s CPU time)")
+            recs.append(f'Close Chrome tab: "{t.title}" ({t.cpu_time:.0f}s CPU time)')
 
     return HeatExplanation(
         severity=severity,
@@ -396,8 +417,11 @@ async def handle_kill_process(
     if not is_safe:
         info = safety.resolve_pid(pid)
         return KillResult(
-            action="error", pid=pid, name=info.get("name", "unknown"),
-            success=False, error=err,
+            action="error",
+            pid=pid,
+            name=info.get("name", "unknown"),
+            success=False,
+            error=err,
         )
 
     info = safety.resolve_pid(pid)
@@ -427,8 +451,11 @@ async def handle_suspend_process(
     is_safe, err = safety.validate_pid(pid)
     if not is_safe:
         return SuspendResult(
-            action="error", pid=pid, name="unknown",
-            success=False, error=err,
+            action="error",
+            pid=pid,
+            name="unknown",
+            success=False,
+            error=err,
         )
 
     info = safety.resolve_pid(pid)
@@ -456,19 +483,27 @@ async def handle_get_energy_report(
 
     data = energy_collector.latest
     entries = []
-    for pid, einfo in sorted(data.processes.items(), key=lambda x: x[1].energy_impact, reverse=True)[:limit]:
-        cat = "HIGH" if einfo.energy_impact > 50 else "MED" if einfo.energy_impact > 20 else "LOW" if einfo.energy_impact > 5 else ""
-        entries.append(EnergyEntry(
-            name=einfo.name,
-            energy_impact=round(einfo.energy_impact, 1),
-            category=cat,
-        ))
+    for pid, einfo in sorted(
+        data.processes.items(), key=lambda x: x[1].energy_impact, reverse=True
+    )[:limit]:
+        cat = (
+            "HIGH"
+            if einfo.energy_impact > 50
+            else "MED" if einfo.energy_impact > 20 else "LOW" if einfo.energy_impact > 5 else ""
+        )
+        entries.append(
+            EnergyEntry(
+                name=einfo.name,
+                energy_impact=round(einfo.energy_impact, 1),
+                category=cat,
+            )
+        )
 
     return EnergyReport(
         available=True,
         entries=entries,
-        cpu_power_w=data.cpu_power if hasattr(data, 'cpu_power') else None,
-        gpu_power_w=data.gpu_power if hasattr(data, 'gpu_power') else None,
+        cpu_power_w=data.cpu_power if hasattr(data, "cpu_power") else None,
+        gpu_power_w=data.gpu_power if hasattr(data, "gpu_power") else None,
     )
 
 
@@ -492,12 +527,14 @@ async def handle_get_network_activity(
         sent = group.total_net_sent
         recv = group.total_net_recv
         if sent + recv > 0:
-            entries.append(NetworkEntry(
-                name=name,
-                bytes_sent=sent,
-                bytes_recv=recv,
-                total_bytes=sent + recv,
-            ))
+            entries.append(
+                NetworkEntry(
+                    name=name,
+                    bytes_sent=sent,
+                    bytes_recv=recv,
+                    total_bytes=sent + recv,
+                )
+            )
 
     sort_fns = {
         "total": lambda e: e.total_bytes,

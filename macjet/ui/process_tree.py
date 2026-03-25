@@ -3,24 +3,22 @@ MacJet — Process Tree Widget (Flight Deck Edition)
 Interactive DataTable with semantic colormaps, role-bucket grouping,
 severity rails, and inline sparklines.
 """
+
 from __future__ import annotations
 
-from textual.widgets import DataTable
-from textual.widget import Widget
 from textual.app import ComposeResult
-from textual.widgets import Static
-from textual.containers import Vertical
+from textual.widget import Widget
+from textual.widgets import DataTable, Static
 
-from ..collectors.process_collector import ProcessGroup, ProcessInfo
 from ..collectors.metrics_history import MetricsHistory
-
+from ..collectors.process_collector import ProcessGroup, ProcessInfo
 
 # ─── Afterburner CPU Color Ramp ──────────────────────
 _CPU_RAMP = [
-    (5,   "#22D3EE"),  # cyan — cool
-    (20,  "#3B82F6"),  # blue
-    (50,  "#8B5CF6"),  # violet
-    (80,  "#D946EF"),  # magenta
+    (5, "#22D3EE"),  # cyan — cool
+    (20, "#3B82F6"),  # blue
+    (50, "#8B5CF6"),  # violet
+    (80, "#D946EF"),  # magenta
     (999, "#FB7185"),  # hot pink — critical
 ]
 
@@ -35,10 +33,10 @@ def _cpu_color(pct: float) -> str:
 
 # ─── Aurora Memory Color Ramp ────────────────────────
 _MEM_RAMP = [
-    (100,   "#34D399"),  # green — light
-    (500,   "#A3E635"),  # lime
-    (1000,  "#F59E0B"),  # amber
-    (2000,  "#F97316"),  # orange
+    (100, "#34D399"),  # green — light
+    (500, "#A3E635"),  # lime
+    (1000, "#F59E0B"),  # amber
+    (2000, "#F97316"),  # orange
     (99999, "#EF4444"),  # red — critical
 ]
 
@@ -141,8 +139,7 @@ class ProcessTree(Widget):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            "  PROCESSES  [#7F8DB3]Enter:expand  s:sort  k:kill  ?:help[/]",
-            id="process-toolbar"
+            "  PROCESSES  [#7F8DB3]Enter:expand  s:sort  k:kill  ?:help[/]", id="process-toolbar"
         )
         table = DataTable(id="process-table", cursor_type="row")
         table.add_column("", key="rail", width=1)
@@ -214,8 +211,16 @@ class ProcessTree(Widget):
 
                 row_key = f"pid-{p.pid}"
                 table.add_row(
-                    rail, icon, name, cpu_str, mem_str, trend,
-                    threads, energy, context, key=row_key,
+                    rail,
+                    icon,
+                    name,
+                    cpu_str,
+                    mem_str,
+                    trend,
+                    threads,
+                    energy,
+                    context,
+                    key=row_key,
                 )
                 self._row_keys.append(row_key)
             else:
@@ -256,8 +261,16 @@ class ProcessTree(Widget):
 
                 row_key = f"group-{group_key}"
                 table.add_row(
-                    rail, f"{expand_icon}{icon}", name, cpu_str, mem_str,
-                    trend, "", energy, context, key=row_key,
+                    rail,
+                    f"{expand_icon}{icon}",
+                    name,
+                    cpu_str,
+                    mem_str,
+                    trend,
+                    "",
+                    energy,
+                    context,
+                    key=row_key,
                 )
                 self._row_keys.append(row_key)
 
@@ -322,8 +335,15 @@ class ProcessTree(Widget):
 
                 child_key = f"child-{p.pid}"
                 table.add_row(
-                    rail, "  ", name, cpu_str, mem_str, trend,
-                    str(p.num_threads), p.energy_impact or "", "",
+                    rail,
+                    "  ",
+                    name,
+                    cpu_str,
+                    mem_str,
+                    trend,
+                    str(p.num_threads),
+                    p.energy_impact or "",
+                    "",
                     key=child_key,
                 )
                 self._row_keys.append(child_key)
@@ -340,8 +360,15 @@ class ProcessTree(Widget):
 
                 role_key = f"role-{group_key}-{role}"
                 table.add_row(
-                    rail, "  ", name, cpu_str, mem_str, trend,
-                    "", "", f"[#7F8DB3]{count} processes[/]",
+                    rail,
+                    "  ",
+                    name,
+                    cpu_str,
+                    mem_str,
+                    trend,
+                    "",
+                    "",
+                    f"[#7F8DB3]{count} processes[/]",
                     key=role_key,
                 )
                 self._row_keys.append(role_key)
@@ -360,12 +387,15 @@ class ProcessTree(Widget):
 
                         p_key = f"child-{p.pid}"
                         table.add_row(
-                            _severity_rail(p.cpu_percent), "    ",
+                            _severity_rail(p.cpu_percent),
+                            "    ",
                             f"    {sub_conn} {p_name}",
                             f"[{p_cpu_color}]{p.cpu_percent:.1f}[/]",
                             f"[{p_mem_color}]{_format_mem(p.memory_mb)}[/]",
                             self._get_sparkline(p.pid) if self._metrics else "",
-                            str(p.num_threads), p.energy_impact or "", "",
+                            str(p.num_threads),
+                            p.energy_impact or "",
+                            "",
                             key=p_key,
                         )
                         self._row_keys.append(p_key)
@@ -376,11 +406,15 @@ class ProcessTree(Widget):
                         rem_mem = sum(p.memory_mb for p in sorted_procs[15:])
                         more_key = f"more-{group_key}-{role}"
                         table.add_row(
-                            " ", "    ",
+                            " ",
+                            "    ",
                             f"    └─ {remaining} more",
                             f"[#7F8DB3]{rem_cpu:.1f}[/]",
                             f"[#7F8DB3]{_format_mem(rem_mem)}[/]",
-                            "", "", "", "",
+                            "",
+                            "",
+                            "",
+                            "",
                             key=more_key,
                         )
                         self._row_keys.append(more_key)
@@ -410,12 +444,14 @@ class ProcessTree(Widget):
 
             child_key = f"child-{p.pid}"
             table.add_row(
-                rail, "  ",
+                rail,
+                "  ",
                 f"  {connector} {child_name}",
                 f"[{cpu_color}]{p.cpu_percent:.1f}[/]",
                 f"[{mem_color}]{_format_mem(p.memory_mb)}[/]",
                 self._get_sparkline(p.pid) if self._metrics else "",
-                str(p.num_threads), p.energy_impact or "",
+                str(p.num_threads),
+                p.energy_impact or "",
                 _confidence_badge(p.confidence),
                 key=child_key,
             )
@@ -427,11 +463,15 @@ class ProcessTree(Widget):
             rem_mem = sum(p.memory_mb for p in children[display_limit:])
             more_key = f"more-{group_key}"
             table.add_row(
-                " ", "  ",
+                " ",
+                "  ",
                 f"  └─ {remaining} hidden",
                 f"[#7F8DB3]{rem_cpu:.1f}%[/]",
                 f"[#7F8DB3]{_format_mem(rem_mem)}[/]",
-                "", "", "", "[#7F8DB3]Enter to expand[/]",
+                "",
+                "",
+                "",
+                "[#7F8DB3]Enter to expand[/]",
                 key=more_key,
             )
             self._row_keys.append(more_key)
@@ -475,7 +515,7 @@ class ProcessTree(Widget):
             for role_name in _ROLE_LABELS:
                 suffix = f"-{role_name}"
                 if parts.endswith(suffix):
-                    group_key = parts[:-len(suffix)]
+                    group_key = parts[: -len(suffix)]
                     role = role_name
                     break
             else:
