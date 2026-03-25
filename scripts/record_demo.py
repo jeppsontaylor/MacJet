@@ -18,14 +18,14 @@ Output:
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import pty
 import random
 import shutil
+import subprocess
 import sys
 import time
-import subprocess
-import json
 from pathlib import Path
 
 # ─── Configuration ───────────────────────────────────
@@ -42,13 +42,13 @@ ROWS = 40
 # ─── Cinematic intro ─────────────────────────────────
 SHELL_PROMPT = "\033[38;2;100;220;100m❯\033[0m "  # Green chevron prompt
 TYPING_COMMAND = "sudo macjet"
-CHAR_DELAY_MIN = 0.04   # Seconds between keystrokes (min)
-CHAR_DELAY_MAX = 0.09   # Seconds between keystrokes (max)
+CHAR_DELAY_MIN = 0.04  # Seconds between keystrokes (min)
+CHAR_DELAY_MAX = 0.09  # Seconds between keystrokes (max)
 POST_ENTER_PAUSE = 0.8  # Pause after "pressing enter" before TUI loads
 
 # ─── Key escape sequences ────────────────────────────
 KEY_DOWN = b"\x1b[B"
-KEY_UP   = b"\x1b[A"
+KEY_UP = b"\x1b[A"
 KEY_ENTER = b"\r"
 KEY_1 = b"1"
 KEY_2 = b"2"
@@ -132,7 +132,8 @@ def find_python() -> str:
         try:
             result = subprocess.run(
                 [candidate, "-c", "import macjet"],
-                capture_output=True, timeout=5,
+                capture_output=True,
+                timeout=5,
             )
             if result.returncode == 0:
                 return candidate
@@ -241,8 +242,9 @@ async def run_demo(python_path: str):
     # Set terminal size on the slave
     try:
         import fcntl
-        import termios
         import struct
+        import termios
+
         winsize = struct.pack("HHHH", ROWS, COLS, 0, 0)
         fcntl.ioctl(slave_fd, termios.TIOCSWINSZ, winsize)
     except Exception as e:
@@ -250,7 +252,9 @@ async def run_demo(python_path: str):
 
     # Launch MacJet
     proc = await asyncio.create_subprocess_exec(
-        python_path, "-m", "macjet",
+        python_path,
+        "-m",
+        "macjet",
         stdin=slave_fd,
         stdout=slave_fd,
         stderr=slave_fd,
@@ -267,10 +271,7 @@ async def run_demo(python_path: str):
         loop = asyncio.get_event_loop()
         while True:
             try:
-                data = await loop.run_in_executor(
-                    None,
-                    lambda: os.read(master_fd, 4096)
-                )
+                data = await loop.run_in_executor(None, lambda: os.read(master_fd, 4096))
                 if not data:
                     break
                 ts = intro_duration + (time.time() - wall_start)
@@ -329,18 +330,26 @@ async def run_demo(python_path: str):
 
 def convert_to_gif(agg_path: str) -> bool:
     """Convert the .cast file to an animated GIF using agg."""
-    print(f"\n  Converting to GIF...")
+    print("\n  Converting to GIF...")
 
     cmd = [
         agg_path,
-        "--cols", str(COLS),
-        "--rows", str(ROWS),
-        "--font-family", "JetBrains Mono,SF Mono,Menlo,Consolas",
-        "--font-size", "13",
-        "--speed", "1.3",              # Slightly faster for reel feel
-        "--idle-time-limit", "2",      # Cap idle pauses at 2s
-        "--last-frame-duration", "3",  # Hold last frame 3s
-        "--theme", "monokai",          # Rich colors matching flight deck palette
+        "--cols",
+        str(COLS),
+        "--rows",
+        str(ROWS),
+        "--font-family",
+        "JetBrains Mono,SF Mono,Menlo,Consolas",
+        "--font-size",
+        "13",
+        "--speed",
+        "1.3",  # Slightly faster for reel feel
+        "--idle-time-limit",
+        "2",  # Cap idle pauses at 2s
+        "--last-frame-duration",
+        "3",  # Hold last frame 3s
+        "--theme",
+        "monokai",  # Rich colors matching flight deck palette
         str(CAST_FILE),
         str(GIF_FILE),
     ]
@@ -371,6 +380,7 @@ def copy_to_assets() -> bool:
 
 if __name__ == "__main__":
     import platform
+
     if platform.system() != "Darwin":
         print("This script is macOS-only")
         sys.exit(1)
