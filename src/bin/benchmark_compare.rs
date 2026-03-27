@@ -177,8 +177,7 @@ fn main() {
             "benchmark_compare: --no-ml is accepted for convenience (this tool does not run ML). \
              Start MacJet in another terminal with ML disabled, e.g.: \
              cargo run --release -- --no-ml --refresh {}  (or: ./macjet.sh --no-ml --refresh {})",
-            args.interval_secs,
-            args.interval_secs
+            args.interval_secs, args.interval_secs
         );
     }
 

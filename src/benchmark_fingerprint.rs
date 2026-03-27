@@ -152,7 +152,10 @@ fn system_profiler_json() -> Option<Value> {
 fn redact_system_profiler(v: &Value) -> Value {
     let mut v = v.clone();
     if let Some(obj) = v.as_object_mut() {
-        if let Some(arr) = obj.get_mut("SPHardwareDataType").and_then(|x| x.as_array_mut()) {
+        if let Some(arr) = obj
+            .get_mut("SPHardwareDataType")
+            .and_then(|x| x.as_array_mut())
+        {
             for item in arr.iter_mut().filter_map(|x| x.as_object_mut()) {
                 item.remove("serial_number");
                 item.remove("platform_UUID");
@@ -184,7 +187,9 @@ fn macos_fingerprint_from_profiler(sp: &Value) -> MacosFingerprint {
         .and_then(|x| x.as_object())
         .map(|o| {
             (
-                o.get("dimm_type").and_then(|v| v.as_str()).map(String::from),
+                o.get("dimm_type")
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
                 o.get("SPMemoryDataType")
                     .and_then(|v| v.as_str())
                     .map(String::from),
@@ -193,10 +198,22 @@ fn macos_fingerprint_from_profiler(sp: &Value) -> MacosFingerprint {
         .unwrap_or((None, None));
 
     MacosFingerprint {
-        machine_name: hw.and_then(|o| o.get("machine_name")).and_then(|v| v.as_str()).map(String::from),
-        machine_model: hw.and_then(|o| o.get("machine_model")).and_then(|v| v.as_str()).map(String::from),
-        chip_type: hw.and_then(|o| o.get("chip_type")).and_then(|v| v.as_str()).map(String::from),
-        model_number: hw.and_then(|o| o.get("model_number")).and_then(|v| v.as_str()).map(String::from),
+        machine_name: hw
+            .and_then(|o| o.get("machine_name"))
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        machine_model: hw
+            .and_then(|o| o.get("machine_model"))
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        chip_type: hw
+            .and_then(|o| o.get("chip_type"))
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        model_number: hw
+            .and_then(|o| o.get("model_number"))
+            .and_then(|v| v.as_str())
+            .map(String::from),
         number_processors: hw
             .and_then(|o| o.get("number_processors"))
             .and_then(|v| v.as_str())
@@ -209,7 +226,10 @@ fn macos_fingerprint_from_profiler(sp: &Value) -> MacosFingerprint {
             .and_then(|o| o.get("boot_rom_version"))
             .and_then(|v| v.as_str())
             .map(String::from),
-        os_version_full: sw.and_then(|o| o.get("os_version")).and_then(|v| v.as_str()).map(String::from),
+        os_version_full: sw
+            .and_then(|o| o.get("os_version"))
+            .and_then(|v| v.as_str())
+            .map(String::from),
         kernel_version: sw
             .and_then(|o| o.get("kernel_version"))
             .and_then(|v| v.as_str())
@@ -311,8 +331,9 @@ pub const DEFAULT_BENCHMARK_RESULTS_SUBDIR: &str = "benchmarks/results";
 /// Default artifact path: `<repo>/benchmarks/results/benchmark_compare_<unix_ts>.json` when repo root
 /// is found; otherwise `./benchmarks/results/...` under the current directory.
 pub fn default_benchmark_json_path(unix_ts: u64) -> std::path::PathBuf {
-    let base = find_macjet_repo_root()
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")));
+    let base = find_macjet_repo_root().unwrap_or_else(|| {
+        std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
+    });
     base.join(DEFAULT_BENCHMARK_RESULTS_SUBDIR)
         .join(format!("benchmark_compare_{}.json", unix_ts))
 }
@@ -321,18 +342,15 @@ pub fn default_benchmark_json_path(unix_ts: u64) -> std::path::PathBuf {
 /// `benchmarks` is a file, read-only tree, etc.), return the **same filename** in the **current
 /// working directory** so the run still produces JSON.
 pub fn resolve_default_benchmark_path(preferred: std::path::PathBuf) -> std::path::PathBuf {
-    let Some(parent) = preferred
-        .parent()
-        .filter(|p| !p.as_os_str().is_empty())
-    else {
+    let Some(parent) = preferred.parent().filter(|p| !p.as_os_str().is_empty()) else {
         return preferred;
     };
     match std::fs::create_dir_all(parent) {
         Ok(()) => preferred,
         Err(e) => {
-            let name = preferred.file_name().unwrap_or_else(|| std::ffi::OsStr::new(
-                "benchmark_compare.json",
-            ));
+            let name = preferred
+                .file_name()
+                .unwrap_or_else(|| std::ffi::OsStr::new("benchmark_compare.json"));
             let fallback = std::env::current_dir()
                 .unwrap_or_else(|_| std::path::PathBuf::from("."))
                 .join(name);
