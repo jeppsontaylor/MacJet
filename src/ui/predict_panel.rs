@@ -7,10 +7,10 @@
 /// - Stats bar with rows, features, inference latency, countdown, MAE
 use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::Widget,
+    widgets::{Block, Borders, Paragraph, Widget},
 };
 
 use super::styles;
@@ -19,17 +19,28 @@ use crate::collectors::cpu_predictor::PredictorStats;
 pub struct PredictPanelWidget<'a> {
     pub stats: &'a PredictorStats,
     pub current_cpu: f64,
+    /// When `false`, show a grayed-out disabled state (started with `--no-ml`).
+    pub ml_enabled: bool,
 }
 
 impl<'a> PredictPanelWidget<'a> {
-    pub fn new(stats: &'a PredictorStats, current_cpu: f64) -> Self {
-        Self { stats, current_cpu }
+    pub fn new(stats: &'a PredictorStats, current_cpu: f64, ml_enabled: bool) -> Self {
+        Self {
+            stats,
+            current_cpu,
+            ml_enabled,
+        }
     }
 }
 
 impl<'a> Widget for PredictPanelWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         if area.height < 6 || area.width < 30 {
+            return;
+        }
+
+        if !self.ml_enabled {
+            self.render_ml_disabled(area, buf);
             return;
         }
 
@@ -64,6 +75,59 @@ impl<'a> Widget for PredictPanelWidget<'a> {
 }
 
 impl<'a> PredictPanelWidget<'a> {
+    /// Grayed-out Predict tab when `--no-ml` is set: border, dim title, red centered message.
+    fn render_ml_disabled(&self, area: Rect, buf: &mut Buffer) {
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(styles::BORDER_DIM))
+            .title(Line::from(vec![
+                Span::styled("  ⚡ ", Style::default().fg(styles::ACCENT_AMBER)),
+                Span::styled(
+                    "CPU Prediction Engine",
+                    Style::default()
+                        .fg(styles::TEXT_DIM)
+                        .add_modifier(Modifier::DIM),
+                ),
+                Span::styled("  ○ OFF ", Style::default().fg(styles::ACCENT_RED)),
+            ]))
+            .style(Style::default().bg(styles::BG_DARK));
+
+        let inner = block.inner(area);
+        let vertical = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Percentage(38),
+                Constraint::Length(8),
+                Constraint::Percentage(38),
+            ])
+            .split(inner);
+
+        let text = vec![
+            Line::from(vec![Span::styled(
+                "ML prediction disabled",
+                Style::default()
+                    .fg(styles::ACCENT_RED)
+                    .add_modifier(Modifier::BOLD),
+            )]),
+            Line::from(""),
+            Line::from(vec![Span::styled(
+                "Online RLS (CPU forecast) is not running.",
+                Style::default().fg(styles::TEXT_DIM),
+            )]),
+            Line::from(vec![Span::styled(
+                "Restart without --no-ml to enable.",
+                Style::default().fg(styles::TEXT_DIM),
+            )]),
+        ];
+
+        Paragraph::new(text)
+            .alignment(Alignment::Center)
+            .style(Style::default().bg(styles::BG_DARK))
+            .render(vertical[1], buf);
+
+        block.render(area, buf);
+    }
+
     fn render_title(&self, buf: &mut Buffer, area: Rect) {
         let status_badge = if self.stats.trained {
             Span::styled(

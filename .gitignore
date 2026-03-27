@@ -8,6 +8,18 @@ Cargo.lock
 .LSOverride
 ._*
 
+# Secrets and local env (never commit)
+.env
+.env.*
+!.env.example
+
+# Keys and keystores
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+
 # IDE
 .idea/
 .vscode/
@@ -20,6 +32,5 @@ Cargo.lock
 *.gif
 *.mp4
 
-# Benchmark artifacts
-benchmarks/results/
+# Benchmark artifacts (committed JSON lives under benchmarks/results/)
 benchmarks/telemetry/

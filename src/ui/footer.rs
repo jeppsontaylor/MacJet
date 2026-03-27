@@ -4,7 +4,7 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::Style,
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::Widget,
 };
@@ -13,6 +13,7 @@ use super::styles;
 
 pub struct Footer {
     pub paused: bool,
+    pub ml_enabled: bool,
 }
 
 impl Widget for Footer {
@@ -21,7 +22,7 @@ impl Widget for Footer {
 
         let pause_label = if self.paused { "Resume" } else { "Pause" };
 
-        let spans = vec![
+        let mut spans = vec![
             Span::styled(" q", styles::style_bold_cyan()),
             Span::styled(" Quit  ", styles::style_dim()),
             Span::styled("space", styles::style_bold_cyan()),
@@ -37,6 +38,15 @@ impl Widget for Footer {
             Span::styled("?", styles::style_bold_cyan()),
             Span::styled(" Help", styles::style_dim()),
         ];
+        if !self.ml_enabled {
+            spans.push(Span::styled("  │  ", styles::style_dim()));
+            spans.push(Span::styled(
+                "Predict ML off (--no-ml)",
+                Style::default()
+                    .fg(styles::ACCENT_RED)
+                    .add_modifier(Modifier::ITALIC),
+            ));
+        }
 
         let line = Line::from(spans);
         buf.set_line(area.x, area.y, &line, area.width);

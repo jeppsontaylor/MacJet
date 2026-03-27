@@ -15,6 +15,8 @@ Set Width 1680
 Set Height 900
 Set Theme "Molokai"
 Set Framerate 30
+# VHS default padding is 60px — adds a gray frame around the terminal; flush to edges.
+Set Padding 0
 
 # Crossterm strips all color if NO_COLOR is set (common in dev shells). ttyd/VHS also
 # needs a true-color-capable term for RGB (38;2 / 48;2) from MacJet's theme.

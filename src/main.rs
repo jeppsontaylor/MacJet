@@ -9,6 +9,7 @@
 use std::io;
 use std::time::{Duration, Instant};
 
+use clap::Parser;
 use crossterm::{
     event::{self, Event, KeyCode, KeyModifiers},
     execute,
@@ -31,10 +32,33 @@ use macjet::ui::{
     reclaim_panel::ReclaimPanelWidget, styles,
 };
 
+#[derive(Parser, Debug)]
+#[command(
+    name = "macjet",
+    version,
+    about = "MacJet — macOS process monitor (terminal UI)"
+)]
+struct Cli {
+    /// Run the MCP JSON-RPC server and exit (no TUI)
+    #[arg(long)]
+    mcp: bool,
+    /// Disable online CPU prediction (RLS): no sampling, no training. Predict tab shows disabled.
+    #[arg(long = "no-ml", visible_alias = "noML")]
+    no_ml: bool,
+    /// Seconds between data collection ticks (default 1). Larger values reduce CPU wakeups.
+    #[arg(long = "refresh", value_name = "SECS", default_value_t = 1)]
+    refresh_secs: u64,
+}
+
 fn main() -> io::Result<()> {
-    // Check for MCP mode
-    let args: Vec<String> = std::env::args().collect();
-    if args.iter().any(|arg| arg == "--mcp") {
+    let cli = Cli::parse();
+
+    if cli.refresh_secs < 1 {
+        eprintln!("error: --refresh must be at least 1 second");
+        std::process::exit(2);
+    }
+
+    if cli.mcp {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
@@ -53,7 +77,11 @@ fn main() -> io::Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     // Run the app
-    let result = run_app(&mut terminal);
+    let result = run_app(
+        &mut terminal,
+        !cli.no_ml,
+        Duration::from_secs(cli.refresh_secs),
+    );
 
     // Restore terminal
     disable_raw_mode()?;
@@ -63,15 +91,18 @@ fn main() -> io::Result<()> {
     result
 }
 
-fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> {
-    let mut app = AppState::new();
+fn run_app(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    ml_enabled: bool,
+    tick_interval: Duration,
+) -> io::Result<()> {
+    let mut app = AppState::new(ml_enabled);
 
     // Initial tick to populate data
     app.tick();
     app.refresh_selection_context();
 
     let mut last_tick = Instant::now();
-    let tick_interval = Duration::from_secs(1);
 
     loop {
         // ─── Draw ──────────────────────────────────
@@ -128,7 +159,8 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<
                 }
                 View::Predict => {
                     let stats = app.cpu_predictor.stats();
-                    let predict_widget = PredictPanelWidget::new(&stats, app.system.cpu_percent);
+                    let predict_widget =
+                        PredictPanelWidget::new(&stats, app.system.cpu_percent, app.ml_enabled);
                     f.render_widget(predict_widget, body_area);
                 }
                 View::Help => {
@@ -137,7 +169,13 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<
             }
 
             // ─── Footer ─────────────────────────
-            f.render_widget(Footer { paused: app.paused }, outer[4]);
+            f.render_widget(
+                Footer {
+                    paused: app.paused,
+                    ml_enabled: app.ml_enabled,
+                },
+                outer[4],
+            );
 
             // ─── Notification Overlay ────────────
             if let Some(notification) = app.notifications.current() {
@@ -298,7 +336,7 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<
             return Ok(());
         }
 
-        // ─── Tick (1s heartbeat) ────────────────────
+        // ─── Tick (configurable refresh interval) ────────────────────
         if last_tick.elapsed() >= tick_interval {
             app.tick();
             app.notifications.prune();

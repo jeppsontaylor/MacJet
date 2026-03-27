@@ -23,6 +23,24 @@ if ! command -v cargo &> /dev/null; then
 fi
 
 # ---------------------------------------------------------
+# benchmark_compare (idle CPU sampler) — same args as cargo bin
+# Writes: benchmarks/results/benchmark_compare_<unix_ts>.json (schema v1: run settings + system fingerprint)
+# Post-hoc metadata: cargo run --release --bin benchmark_enrich -- path/to/file.json [--in-place] [--force]
+# README table snippet: python3 scripts/benchmark_readme_snippet.py
+# Usage: ./macjet.sh benchmark-compare --max-samples 300 --refresh 10
+#        ./macjet.sh bench --no-ml --max-samples 300 --refresh 10   # --no-ml forwarded (hint only)
+#        ./macjet.sh bench -s 300 -r 10
+# ---------------------------------------------------------
+if [ "${1:-}" = "benchmark-compare" ] || [ "${1:-}" = "bench" ]; then
+    shift
+    # Build then exec the binary directly (keeps stderr a TTY so tqdm-style progress renders;
+    # `cargo run` can drop TTY and hide the live bar).
+    _MACJET_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    (cd "$_MACJET_ROOT" && cargo build --release --bin benchmark_compare --quiet) || exit $?
+    exec "$_MACJET_ROOT/target/release/benchmark_compare" "$@"
+fi
+
+# ---------------------------------------------------------
 # Optional Developer Dependency Checks
 # ---------------------------------------------------------
 MISSING_OPTIONAL=0

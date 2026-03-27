@@ -1,7 +1,9 @@
 /// MacJet — Self-Telemetry Module
 ///
 /// Writes rolling 1-minute JSON logs to benchmarks/telemetry/
-/// with prefix `macjet_rs_telemetry_` so analyze.py can compare both.
+/// with prefix `macjet_rs_telemetry_`. Note: `cpu_percent` in each sample is **system-wide**
+/// CPU (`SystemSnapshot::cpu_percent`), not the MacJet process — use `benchmark_compare` for
+/// apples-to-apples MacJet vs Activity Monitor **process** CPU.
 /// Keeps at most 5 log files, deleting the oldest when exceeded.
 use serde::Serialize;
 use std::fs;

@@ -116,10 +116,14 @@ pub struct AppState {
     pub selected_group: Option<ProcessGroup>,
     pub selected_reclaim_candidate: Option<ReclaimCandidate>,
     pub selected_reclaim_group: Option<ProcessGroup>,
+
+    /// When `false`, the online CPU predictor (RLS) does not sample or train (`--no-ml`).
+    pub ml_enabled: bool,
 }
 
 impl AppState {
-    pub fn new() -> Self {
+    /// `ml_enabled`: set `false` to disable CPU prediction sampling/training (for benchmarking).
+    pub fn new(ml_enabled: bool) -> Self {
         let mut collector = SystemCollector::new();
         let initial_snapshot = collector.collect();
 
@@ -155,6 +159,8 @@ impl AppState {
             selected_group: None,
             selected_reclaim_candidate: None,
             selected_reclaim_group: None,
+
+            ml_enabled,
         }
     }
 
@@ -168,10 +174,12 @@ impl AppState {
         // Refresh system stats
         self.system = self.system_collector.collect();
 
-        // Always feed CPU to predictor (even during interaction pause)
-        self.cpu_predictor.push_sample(self.system.cpu_percent);
-        if self.cpu_predictor.should_train() {
-            self.cpu_predictor.try_train();
+        if self.ml_enabled {
+            // Feed CPU to predictor (even during interaction pause)
+            self.cpu_predictor.push_sample(self.system.cpu_percent);
+            if self.cpu_predictor.should_train() {
+                self.cpu_predictor.try_train();
+            }
         }
 
         let now = std::time::SystemTime::now()

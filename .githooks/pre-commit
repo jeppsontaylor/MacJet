@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Block accidental commits of environment files and private keys.
+# Enable: git config core.hooksPath .githooks
+set -euo pipefail
+
+die() { echo "pre-commit: $*" >&2; exit 1; }
+
+is_allowlisted_env() {
+  local base="$1"
+  [[ "$base" == .env.example || "$base" == .env.sample || "$base" == .env.template ]]
+}
+
+path_is_blocked_name() {
+  local path="$1"
+  local base
+  base=$(basename "$path")
+
+  if [[ "$base" == .env ]] || [[ "$base" == .env.* ]]; then
+    is_allowlisted_env "$base" && return 1
+    return 0
+  fi
+
+  case "$base" in
+    id_rsa | id_ecdsa | id_ed25519 | id_dsa) return 0 ;;
+  esac
+
+  case "$path" in
+    *.pem | *.p12 | *.pfx | *.jks | *.keystore) return 0 ;;
+  esac
+
+  return 1
+}
+
+staged_has_private_key_blob() {
+  local path="$1"
+  git show ":$path" 2>/dev/null | head -c 65536 | grep -qE 'BEGIN (OPENSSH|RSA|EC) PRIVATE KEY'
+}
+
+blocked=0
+has_staged=0
+while IFS= read -r path || [[ -n "${path:-}" ]]; do
+  [[ -z "$path" ]] && continue
+  has_staged=1
+  if path_is_blocked_name "$path"; then
+    echo "pre-commit: refusing to commit '$path' (.env / key / credential material)." >&2
+    blocked=1
+    continue
+  fi
+  if staged_has_private_key_blob "$path"; then
+    echo "pre-commit: '$path' contains a PEM/OpenSSH private key block." >&2
+    blocked=1
+  fi
+done < <(git diff --cached --name-only --diff-filter=ACM)
+
+[[ "$has_staged" -eq 0 ]] && exit 0
+
+if [[ "$blocked" -ne 0 ]]; then
+  echo "pre-commit: remove these files from the commit or use a placeholder. See docs/git-hooks.md" >&2
+  exit 1
+fi
+
+exit 0
