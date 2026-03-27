@@ -10,6 +10,16 @@ Thank you for your interest in contributing to MacJet! MacJet is written in 100%
 - [Rust 1.75+](https://rustup.rs/)
 - Git
 
+### Git hooks (recommended)
+
+Pre-commit hooks block `.env` files and common key material from being committed. Enable once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Details: [docs/git-hooks.md](docs/git-hooks.md).
+
 ### Getting Started
 
 ```bash
@@ -34,10 +44,15 @@ cargo run --release -- --mcp
 
 The README demo media is generated with **[VHS](https://github.com/charmbracelet/vhs)** from [scripts/demo.tape](scripts/demo.tape).
 
-1. Cache sudo credentials once: `sudo -v`
-2. From the repo root: `vhs scripts/demo.tape`
+The tape runs MacJet **without sudo** so recording never hangs on `Password:`. Optional sudo + machine setup for full energy metrics is in **[docs/vhs-demo-recording.md](docs/vhs-demo-recording.md)**.
 
-That writes **`assets/macjet_demo.gif`** plus **`assets/view_apps.png`**, **`assets/view_energy.png`**, and **`assets/view_reclaim.png`**. Re-run after UI changes so marketing assets match the product.
+From the repo root:
+
+```bash
+./scripts/record-demo.sh
+```
+
+That builds `target/release/macjet`, runs the tape, and writes **`assets/macjet_demo.gif`** plus **`assets/view_apps.png`**, **`assets/view_energy.png`**, and **`assets/view_reclaim.png`**. Re-run after UI changes so marketing assets match the product.
 
 Performance tables and methodology for README charts live in **[docs/benchmarks.md](docs/benchmarks.md)**.
 

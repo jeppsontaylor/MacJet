@@ -350,7 +350,7 @@ fn render_process_view(f: &mut ratatui::Frame, app: &mut AppState, body_area: Re
     // Split body into content (left) + inspector (right)
     let body = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Min(60), Constraint::Length(38)])
+        .constraints([Constraint::Fill(3), Constraint::Fill(2)])
         .split(body_area);
 
     // Left: Process tree
@@ -395,7 +395,7 @@ fn render_process_view(f: &mut ratatui::Frame, app: &mut AppState, body_area: Re
 fn render_energy_view(f: &mut ratatui::Frame, app: &mut AppState, body_area: Rect) {
     let body = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Min(60), Constraint::Length(38)])
+        .constraints([Constraint::Fill(3), Constraint::Fill(2)])
         .split(body_area);
 
     // Sort by energy impact for this view
@@ -442,7 +442,7 @@ fn render_energy_view(f: &mut ratatui::Frame, app: &mut AppState, body_area: Rec
 fn render_reclaim_view(f: &mut ratatui::Frame, app: &mut AppState, body_area: Rect) {
     let body = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Min(60), Constraint::Length(38)])
+        .constraints([Constraint::Fill(3), Constraint::Fill(2)])
         .split(body_area);
 
     let candidates = app

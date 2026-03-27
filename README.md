@@ -23,7 +23,7 @@
 <table>
   <tr>
     <td align="center" width="33%">
-      <img src="assets/view_apps.png" alt="MacJet Apps view: processes grouped by application with CPU and memory columns" width="100%">
+      <img src="assets/view_apps.png" alt="MacJet Processes view: filter and expanded Google Chrome group with CPU, memory, and inspector" width="100%">
       <br><sub>Apps</sub>
     </td>
     <td align="center" width="33%">
