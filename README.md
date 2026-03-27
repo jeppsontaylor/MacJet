@@ -94,16 +94,7 @@ CPU and RSS are **% of one core** and **MB** from `benchmark_compare` / historic
 
 **Takeaway:** In the **benchmark_compare** session, both apps show **small non-zero** idle CPU (measurement noise + background work); MacJet is **higher than Activity Monitor** on average CPU here but **far below** the documented **Python v1** average (**~5×** vs 14.7%).
 
-**Memory:** In that **same** session, MacJet RSS (**~53 MB**) was **lower** than Activity Monitor (**~88 MB**). Separately, an **older documented** session ([docs/benchmarks.md](docs/benchmarks.md)) reported **~27 MB** (v1), **~64 MB** (Activity Monitor), **~109 MB** (v2, 5 views) — v2 trades more RAM for Tokio, caching, and richer UI; see [docs/benchmarks.md](docs/benchmarks.md#the-cpu-vs-memory-tradeoff).
-
-<!-- Mermaid y-axis 0–16 keeps low CPU bars visible (same averages as the SVG). -->
-```mermaid
-xychart-beta
-    title "CPU usage — average % of one core (lower is better)"
-    x-axis ["Activity Monitor", "MacJet v1 (Python)", "MacJet v2.0.1 (Rust)"]
-    y-axis "CPU %" 0 --> 16
-    bar [1.22, 14.7, 2.77]
-```
+**Memory:** In that **same** session, MacJet RSS (**~53 MB**) was **lower** than Activity Monitor (**~88 MB**). Separately, an **older documented** session ([docs/benchmarks.md](docs/benchmarks.md)) reported **~27 MB** (v1) — v2 natively trades some static RAM for Tokio, caching, and a richer UI, but uses far less CPU.
 
 <p align="center">
   <img src="assets/benchmark_cpu.svg" alt="Bar chart: Activity Monitor about 1.2 percent, MacJet v2 Rust about 2.8 percent, MacJet v1 Python 14.7 percent average CPU" width="640">
