@@ -6,7 +6,7 @@ description = "MacJet — blazing-fast macOS process monitor (100% Rust rewrite)
 
 [dependencies]
 # TUI
-ratatui = { version = "0.29", features = ["crossterm"] }
+ratatui = { version = "0.30", features = ["crossterm"] }
 crossterm = "0.28"
 
 # Async runtime - Stripped down features for faster builds
