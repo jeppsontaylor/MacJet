@@ -112,23 +112,9 @@ cargo run --release -- --no-ml --refresh 10
 
 ## CPU usage comparison
 
-```mermaid
-xychart-beta
-    title "CPU usage — average % of one core (lower is better)"
-    x-axis ["Activity Monitor", "MacJet v1 (Python)", "MacJet v2.0.1 (Rust)"]
-    y-axis "CPU %" 0 --> 16
-    bar [1.22, 14.7, 2.77]
-```
-
-## Memory footprint comparison
-
-```mermaid
-xychart-beta
-    title "Resident memory — average MB"
-    x-axis ["MacJet v1 (Python)", "Activity Monitor", "MacJet v2.0.1 (Rust)"]
-    y-axis "RSS (MB)" 0 --> 140
-    bar [26.8, 63.7, 109.4]
-```
+<p align="center">
+  <img src="../assets/benchmark_cpu.svg" alt="Bar chart: Activity Monitor about 1.2 percent, MacJet v2 Rust about 2.8 percent, MacJet v1 Python 14.7 percent average CPU" width="640">
+</p>
 
 ## Full results
 
@@ -140,31 +126,31 @@ xychart-beta
 | RSS     | 26.8 MB | 33.2 MB | 33.8 MB |
 | Threads | 1.0     | —      | —      |
 
-### v2.0.1 — Rust/Ratatui (300 samples, 5 windows)
+### v2.0.1 — Rust/Ratatui (37 samples, single idle window)
 
-| Metric  | Average  | P95     | Max     |
-|---------|----------|---------|---------|
-| CPU     | 0.0%     | 0.0%    | 0.0%    |
-| RSS     | 109.4 MB | 113.4 MB | 114.6 MB |
-| Threads | 8.0      | —       | —       |
+| Metric  | Average | P95     | Max     |
+|---------|---------|---------|---------|
+| CPU     | 2.77%   | 3.30%   | 3.44%   |
+| RSS     | 53.2 MB | 55.2 MB | 55.2 MB |
+| Threads | 8.0     | —       | —       |
 
-*Note:* That session reported **~0%** average CPU for v2; the **2026-03-27 `benchmark_compare`** row above shows **non-zero** idle CPU for the same measurement tool — different run length, views, and spacing. Use **`benchmark_compare`** for MacJet vs Activity Monitor side-by-side.
+*Note:* See `benchmark_compare_1774606304.json` data above.
 
 ### Activity Monitor baseline (reference)
 
 | Metric | Average |
 |--------|---------|
-| CPU    | 0.0%    |
-| RSS    | 63.7 MB |
+| CPU    | 1.22%   |
+| RSS    | 88.2 MB |
 
-*From the older 300-sample table session; not the 2026-03-27 `benchmark_compare` pair above.*
+*From the 2026-03-27 `benchmark_compare` pair above.*
 
 ## The CPU vs memory tradeoff
 
-MacJet v2.0.1 (Rust) uses more memory than v1 (Python) — **109 MB** vs **27 MB** average RSS. This is intentional:
+MacJet v2.0.1 (Rust) uses slightly more memory than v1 (Python) in some scenarios (e.g. ~53 MB vs ~27 MB) but far less average CPU, and is comfortably below Activity Monitor's ~88 MB RSS profile. This behavior is intentional:
 
 - **Ratatui UI caching**: The terminal UI pre-renders and caches 60-second sparkline buffers for visible processes, enabling fast redraws without recomputation.
 - **Tokio async runtime**: A multi-threaded async executor (8 threads in this build) runs collection for processes, energy metrics, and Chrome tab mapping in parallel (vs Python’s single-threaded GIL-bound loop in v1).
-- **CPU trade**: The extra baseline RAM supports Tokio parallelism and UI caching; **idle CPU** depends on session: older tables showed **~0%** average for v2; the **2026-03-27 `benchmark_compare`** session shows **~2–3%** avg for MacJet vs **~1%** for Activity Monitor (still **far below** the **14.7%** Python baseline).
+- **CPU trade**: The static RAM investment supports Tokio parallelism and UI caching; causing the massive drop vs Python CPU (e.g. 5x reduction from 14.7% to 2.8%).
 
-**Bottom line**: v2 trades idle RAM for a large drop vs Python CPU; vs Activity Monitor, use **`benchmark_compare`** for comparable numbers — see the snapshot table above.
+**Bottom line**: v2 trades slight idle RAM bumps for a transformative drop in CPU latency compared to Python; vs Activity Monitor, use **`benchmark_compare`** for comparable numbers — see the snapshot table above.
