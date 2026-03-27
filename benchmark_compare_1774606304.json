@@ -1,0 +1,380 @@
+{
+  "run": {
+    "argv": [
+      "/Users/bentaylor/Code/hot/target/release/benchmark_compare",
+      "--no-ml",
+      "--max-samples",
+      "37",
+      "--refresh",
+      "10"
+    ],
+    "finished_at_utc": "2026-03-27T10:17:45.082Z",
+    "interval_secs": 10.0,
+    "max_samples": 37,
+    "no_ml_flag": true,
+    "started_at_utc": "2026-03-27T10:11:44.532Z",
+    "wall_seconds": 360.547742125
+  },
+  "samples": [
+    {
+      "activity_monitor_cpu_percent": 0.0,
+      "activity_monitor_rss_mb": 88.515625,
+      "index": 0,
+      "macjet_cpu_percent": 0.0,
+      "macjet_rss_mb": 52.34375
+    },
+    {
+      "activity_monitor_cpu_percent": 0.0,
+      "activity_monitor_rss_mb": 88.515625,
+      "index": 1,
+      "macjet_cpu_percent": 0.0,
+      "macjet_rss_mb": 52.375
+    },
+    {
+      "activity_monitor_cpu_percent": 1.1197147369384766,
+      "activity_monitor_rss_mb": 88.53125,
+      "index": 2,
+      "macjet_cpu_percent": 2.652244806289673,
+      "macjet_rss_mb": 52.8125
+    },
+    {
+      "activity_monitor_cpu_percent": 1.2501951456069946,
+      "activity_monitor_rss_mb": 88.671875,
+      "index": 3,
+      "macjet_cpu_percent": 3.060181140899658,
+      "macjet_rss_mb": 52.8125
+    },
+    {
+      "activity_monitor_cpu_percent": 1.403275489807129,
+      "activity_monitor_rss_mb": 88.671875,
+      "index": 4,
+      "macjet_cpu_percent": 2.8140313625335693,
+      "macjet_rss_mb": 53.0625
+    },
+    {
+      "activity_monitor_cpu_percent": 1.0148845911026,
+      "activity_monitor_rss_mb": 88.6875,
+      "index": 5,
+      "macjet_cpu_percent": 2.9372458457946777,
+      "macjet_rss_mb": 53.078125
+    },
+    {
+      "activity_monitor_cpu_percent": 1.3626453876495361,
+      "activity_monitor_rss_mb": 88.6875,
+      "index": 6,
+      "macjet_cpu_percent": 3.0450007915496826,
+      "macjet_rss_mb": 53.109375
+    },
+    {
+      "activity_monitor_cpu_percent": 1.3240867853164673,
+      "activity_monitor_rss_mb": 88.6875,
+      "index": 7,
+      "macjet_cpu_percent": 2.9403040409088135,
+      "macjet_rss_mb": 53.125
+    },
+    {
+      "activity_monitor_cpu_percent": 1.217771291732788,
+      "activity_monitor_rss_mb": 88.703125,
+      "index": 8,
+      "macjet_cpu_percent": 2.838021993637085,
+      "macjet_rss_mb": 53.125
+    },
+    {
+      "activity_monitor_cpu_percent": 1.028762936592102,
+      "activity_monitor_rss_mb": 88.703125,
+      "index": 9,
+      "macjet_cpu_percent": 2.437542676925659,
+      "macjet_rss_mb": 53.59375
+    },
+    {
+      "activity_monitor_cpu_percent": 1.2236477136611938,
+      "activity_monitor_rss_mb": 88.703125,
+      "index": 10,
+      "macjet_cpu_percent": 2.7001376152038574,
+      "macjet_rss_mb": 53.609375
+    },
+    {
+      "activity_monitor_cpu_percent": 1.2004170417785645,
+      "activity_monitor_rss_mb": 88.6875,
+      "index": 11,
+      "macjet_cpu_percent": 2.561340570449829,
+      "macjet_rss_mb": 53.625
+    },
+    {
+      "activity_monitor_cpu_percent": 1.378088355064392,
+      "activity_monitor_rss_mb": 88.21875,
+      "index": 12,
+      "macjet_cpu_percent": 2.6334688663482666,
+      "macjet_rss_mb": 51.296875
+    },
+    {
+      "activity_monitor_cpu_percent": 1.2911739349365234,
+      "activity_monitor_rss_mb": 88.21875,
+      "index": 13,
+      "macjet_cpu_percent": 2.6652586460113525,
+      "macjet_rss_mb": 51.296875
+    },
+    {
+      "activity_monitor_cpu_percent": 0.8598878383636475,
+      "activity_monitor_rss_mb": 88.234375,
+      "index": 14,
+      "macjet_cpu_percent": 2.8537580966949463,
+      "macjet_rss_mb": 51.875
+    },
+    {
+      "activity_monitor_cpu_percent": 1.2952591180801392,
+      "activity_monitor_rss_mb": 87.984375,
+      "index": 15,
+      "macjet_cpu_percent": 2.6982951164245605,
+      "macjet_rss_mb": 51.40625
+    },
+    {
+      "activity_monitor_cpu_percent": 1.3450863361358643,
+      "activity_monitor_rss_mb": 87.984375,
+      "index": 16,
+      "macjet_cpu_percent": 2.7209134101867676,
+      "macjet_rss_mb": 51.515625
+    },
+    {
+      "activity_monitor_cpu_percent": 1.3185547590255737,
+      "activity_monitor_rss_mb": 87.984375,
+      "index": 17,
+      "macjet_cpu_percent": 2.841179847717285,
+      "macjet_rss_mb": 52.1875
+    },
+    {
+      "activity_monitor_cpu_percent": 1.3022210597991943,
+      "activity_monitor_rss_mb": 87.984375,
+      "index": 18,
+      "macjet_cpu_percent": 2.859166383743286,
+      "macjet_rss_mb": 52.234375
+    },
+    {
+      "activity_monitor_cpu_percent": 1.2899600267410278,
+      "activity_monitor_rss_mb": 87.984375,
+      "index": 19,
+      "macjet_cpu_percent": 2.768202781677246,
+      "macjet_rss_mb": 52.40625
+    },
+    {
+      "activity_monitor_cpu_percent": 1.268162727355957,
+      "activity_monitor_rss_mb": 87.984375,
+      "index": 20,
+      "macjet_cpu_percent": 2.9999308586120605,
+      "macjet_rss_mb": 52.578125
+    },
+    {
+      "activity_monitor_cpu_percent": 1.2808805704116821,
+      "activity_monitor_rss_mb": 87.984375,
+      "index": 21,
+      "macjet_cpu_percent": 2.884274482727051,
+      "macjet_rss_mb": 52.578125
+    },
+    {
+      "activity_monitor_cpu_percent": 1.0397841930389404,
+      "activity_monitor_rss_mb": 87.984375,
+      "index": 22,
+      "macjet_cpu_percent": 2.8748250007629395,
+      "macjet_rss_mb": 53.3125
+    },
+    {
+      "activity_monitor_cpu_percent": 1.3364585638046265,
+      "activity_monitor_rss_mb": 88.0,
+      "index": 23,
+      "macjet_cpu_percent": 2.8687021732330322,
+      "macjet_rss_mb": 53.609375
+    },
+    {
+      "activity_monitor_cpu_percent": 1.3236602544784546,
+      "activity_monitor_rss_mb": 88.0,
+      "index": 24,
+      "macjet_cpu_percent": 3.1623549461364746,
+      "macjet_rss_mb": 53.609375
+    },
+    {
+      "activity_monitor_cpu_percent": 1.4023107290267944,
+      "activity_monitor_rss_mb": 88.0,
+      "index": 25,
+      "macjet_cpu_percent": 3.44482159614563,
+      "macjet_rss_mb": 53.609375
+    },
+    {
+      "activity_monitor_cpu_percent": 1.5563247203826904,
+      "activity_monitor_rss_mb": 88.015625,
+      "index": 26,
+      "macjet_cpu_percent": 3.133467197418213,
+      "macjet_rss_mb": 53.609375
+    },
+    {
+      "activity_monitor_cpu_percent": 1.5075489282608032,
+      "activity_monitor_rss_mb": 88.0,
+      "index": 27,
+      "macjet_cpu_percent": 3.15273380279541,
+      "macjet_rss_mb": 54.1875
+    },
+    {
+      "activity_monitor_cpu_percent": 1.4567041397094727,
+      "activity_monitor_rss_mb": 88.0,
+      "index": 28,
+      "macjet_cpu_percent": 3.3291916847229004,
+      "macjet_rss_mb": 54.328125
+    },
+    {
+      "activity_monitor_cpu_percent": 1.5484834909439087,
+      "activity_monitor_rss_mb": 88.0,
+      "index": 29,
+      "macjet_cpu_percent": 3.2083847522735596,
+      "macjet_rss_mb": 54.359375
+    },
+    {
+      "activity_monitor_cpu_percent": 1.3167845010757446,
+      "activity_monitor_rss_mb": 88.0,
+      "index": 30,
+      "macjet_cpu_percent": 3.3034608364105225,
+      "macjet_rss_mb": 54.359375
+    },
+    {
+      "activity_monitor_cpu_percent": 1.2625600099563599,
+      "activity_monitor_rss_mb": 88.0,
+      "index": 31,
+      "macjet_cpu_percent": 3.110656261444092,
+      "macjet_rss_mb": 54.359375
+    },
+    {
+      "activity_monitor_cpu_percent": 1.2519323825836182,
+      "activity_monitor_rss_mb": 88.015625,
+      "index": 32,
+      "macjet_cpu_percent": 3.1179587841033936,
+      "macjet_rss_mb": 54.359375
+    },
+    {
+      "activity_monitor_cpu_percent": 1.1148797273635864,
+      "activity_monitor_rss_mb": 88.015625,
+      "index": 33,
+      "macjet_cpu_percent": 2.7979114055633545,
+      "macjet_rss_mb": 54.359375
+    },
+    {
+      "activity_monitor_cpu_percent": 1.4243319034576416,
+      "activity_monitor_rss_mb": 88.015625,
+      "index": 34,
+      "macjet_cpu_percent": 3.0023319721221924,
+      "macjet_rss_mb": 55.171875
+    },
+    {
+      "activity_monitor_cpu_percent": 1.353192687034607,
+      "activity_monitor_rss_mb": 88.015625,
+      "index": 35,
+      "macjet_cpu_percent": 3.1166951656341553,
+      "macjet_rss_mb": 55.171875
+    },
+    {
+      "activity_monitor_cpu_percent": 1.4189804792404175,
+      "activity_monitor_rss_mb": 88.015625,
+      "index": 36,
+      "macjet_cpu_percent": 2.952787160873413,
+      "macjet_rss_mb": 55.171875
+    }
+  ],
+  "schema_version": 1,
+  "summary": {
+    "activity_monitor_cpu_avg": 1.2186111501745276,
+    "activity_monitor_cpu_max": 1.5563247203826904,
+    "activity_monitor_cpu_p95": 1.5075489282608032,
+    "activity_monitor_rss_avg_mb": 88.22719594594595,
+    "activity_monitor_rss_max_mb": 88.703125,
+    "activity_monitor_rss_p95_mb": 88.703125,
+    "interval_secs": 10.0,
+    "macjet_cpu_avg": 2.7699130290263407,
+    "macjet_cpu_max": 3.44482159614563,
+    "macjet_cpu_p95": 3.3034608364105225,
+    "macjet_rss_avg_mb": 53.233108108108105,
+    "macjet_rss_max_mb": 55.171875,
+    "macjet_rss_p95_mb": 55.171875,
+    "samples": 37
+  },
+  "system": {
+    "arch": "aarch64",
+    "hostname": "Jepsons-MacBook-Pro.local",
+    "kernel_version": "Darwin 24.5.0",
+    "macos": {
+      "boot_rom_version": "11881.121.1",
+      "chip_type": "Apple M4 Max",
+      "kernel_version": "Darwin 24.5.0",
+      "local_host_name": "Jepson’s MacBook Pro",
+      "machine_model": "Mac16,5",
+      "machine_name": "MacBook Pro",
+      "memory_dimm_type": "LPDDR5",
+      "memory_technology": "36 GB",
+      "model_number": "MX303LL/A",
+      "number_processors": "proc 14:10:4",
+      "os_version_full": "macOS 15.5 (24F74)",
+      "physical_memory": "36 GB",
+      "sysctl": {
+        "hw.logicalcpu": "14",
+        "hw.machine": "arm64",
+        "hw.memsize": "38654705664",
+        "hw.model": "Mac16,5",
+        "hw.ncpu": "14",
+        "hw.optional.arm64": "1",
+        "hw.perflevel0.logicalcpu": "10",
+        "hw.perflevel0.physicalcpu": "10",
+        "hw.perflevel1.logicalcpu": "4",
+        "hw.perflevel1.physicalcpu": "4",
+        "hw.physicalcpu": "14",
+        "kern.osrelease": "24.5.0",
+        "kern.osversion": "24F74",
+        "kern.version": "Darwin Kernel Version 24.5.0: Tue Apr 22 19:53:27 PDT 2025; root:xnu-11417.121.6~2/RELEASE_ARM64_T6041"
+      },
+      "system_profiler": {
+        "SPHardwareDataType": [
+          {
+            "_name": "hardware_overview",
+            "activation_lock_status": "activation_lock_enabled",
+            "boot_rom_version": "11881.121.1",
+            "chip_type": "Apple M4 Max",
+            "machine_model": "Mac16,5",
+            "machine_name": "MacBook Pro",
+            "model_number": "MX303LL/A",
+            "number_processors": "proc 14:10:4",
+            "os_loader_version": "11881.121.1",
+            "physical_memory": "36 GB"
+          }
+        ],
+        "SPMemoryDataType": [
+          {
+            "SPMemoryDataType": "36 GB",
+            "dimm_manufacturer": "Micron",
+            "dimm_type": "LPDDR5"
+          }
+        ],
+        "SPSoftwareDataType": [
+          {
+            "_name": "os_overview",
+            "boot_mode": "normal_boot",
+            "boot_volume": "Macintosh HD",
+            "kernel_version": "Darwin 24.5.0",
+            "local_host_name": "Jepson’s MacBook Pro",
+            "os_version": "macOS 15.5 (24F74)",
+            "secure_vm": "secure_vm_enabled",
+            "system_integrity": "integrity_enabled",
+            "uptime": "up 0:2:19:40",
+            "user_name": "Ben Taylor (bentaylor)"
+          }
+        ]
+      }
+    },
+    "os_version": "macOS 15.5 (24F74)",
+    "platform": "macOS",
+    "sysinfo": {
+      "logical_cpu_count": 14,
+      "physical_core_count": 14,
+      "sysinfo_long_os_version": "macOS 15.5 Sequoia",
+      "total_memory_bytes": 38654705664
+    }
+  },
+  "tool": {
+    "name": "benchmark_compare",
+    "version": "2.0.1"
+  }
+}

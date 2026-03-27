@@ -12,7 +12,7 @@ From the repo root:
 
 Energy view (4) has **limited metrics** without root; the rest of the UI records normally. This is the path intended for **unattended** recording and CI-style checks.
 
-The tape uses a **1680×900** terminal so the process list and inspector are not clipped. The in-app layout splits the body **3:2** (tree vs detail) so the right panel scales with terminal width.
+The tape uses a **1680×900** terminal so the process list and inspector are not clipped. **`Set Padding 0`** turns off VHS’s default **60px** outer padding (otherwise you get a gray border around the recording). The in-app layout splits the body **3:2** (tree vs detail) so the right panel scales with terminal width.
 
 ### Colors look gray in the GIF?
 

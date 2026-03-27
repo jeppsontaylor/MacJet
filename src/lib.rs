@@ -5,6 +5,7 @@
 #![allow(clippy::all)]
 
 pub mod actions;
+pub mod benchmark_fingerprint;
 pub mod app;
 pub mod collectors;
 pub mod inspectors;

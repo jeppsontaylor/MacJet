@@ -60,6 +60,13 @@ impl Widget for HelpWidget {
                     .fg(styles::TEXT_DIM)
                     .add_modifier(Modifier::ITALIC),
             )]),
+            Line::from(""),
+            Line::from(vec![Span::styled(
+                "  CLI:",
+                Style::default().fg(styles::TEXT_DIM),
+            )]),
+            Line::from("    --no-ml      Disable CPU prediction (Predict tab shows OFF)"),
+            Line::from("    --refresh N  Seconds between data ticks (default 1)"),
         ];
 
         let p = Paragraph::new(help_text).alignment(ratatui::layout::Alignment::Left);
