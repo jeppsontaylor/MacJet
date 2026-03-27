@@ -1,15 +1,17 @@
-# MacJet Architecture
+# MacJet Architecture (v2.0 Rust)
 
-MacJet is a high-performance terminal UI and MCP server built for macOS. It collects system metrics in real-time, processes them for UI rendering, and exposes them to AI agents via the Model Context Protocol.
+MacJet is a high-performance terminal UI and MCP server built for macOS using 100% Rust. It collects system metrics in real-time (`sysinfo`), processes them for UI rendering (`ratatui`), and exposes them to AI agents via the Model Context Protocol (`rmcp`).
+
+**From Python to Rust:** Earlier versions used Python with Textual and `psutil`. **v2.0.1** replaces that stack with a single native binary: Tokio for scheduling collectors and MCP I/O, `sysinfo` plus macOS-specific helpers for metrics, and Ratatui for the terminal UI. The module boundaries (collectors → history → UI / MCP) mirror the old design, but everything ships as Rust crates in `src/`.
 
 ## 🏗 High-Level Architecture
 
 ```mermaid
 graph TD
     subgraph Collectors
-        PC["ProcessCollector<br/>(psutil, 1s)"]
+        PC["ProcessCollector<br/>(sysinfo, 1s)"]
         EC["EnergyCollector<br/>(powermetrics)"]
-        NC["NetworkCollector<br/>(psutil)"]
+        NC["NetworkCollector<br/>(sysinfo)"]
     end
 
     subgraph Data Layer
@@ -25,7 +27,7 @@ graph TD
     end
 
     subgraph MCP Server
-        FMP["FastMCP<br/>10 tools, 6 resources"]
+        FMP["rmcp Server<br/>10 tools, 6 resources"]
         SAF["Safety Layer<br/>PID validation + audit"]
     end
 
@@ -43,22 +45,7 @@ graph TD
 
 ## 🔄 Data Flow
 
-1. **ProcessCollector**: The core engine that runs a collection loop every second using `psutil`. It fetches process info, handles Chrome renderer identification, identifies parent-child relationships, and groups them by application name.
-2. **MetricsHistory**: Stores historical context using ring buffers, allowing MacJet to display 60-second sparklines and calculate memory growth over time.
-3. **UI Widgets**: `Textual` reads from `MetricsHistory` to render the UI. Views like `ProcessTree` subscribe to these updates and apply semantic colormaps based on process metrics.
-4. **Reclaim Scorer**: A specialized heuristic engine that continuously evaluates process groups on a 100-point scale based on CPU, memory, leaks, and process characteristics to feed the Reclaim (Kill List) view.
-
-## 🤖 MCP Server Architecture
-
-The MCP Server lets AI agents interface directly with MacJet.
-- **Lifespan**: Managed through `FastMCP`.
-- **Tools**: 10 purpose-built tools allowing read/write system interactions.
-- **Safety Layer**: All write/destructive actions (like `kill_process`) are routed through an elicitation process, prompting the human to confirm before executing. System PIDs (< 500) are heavily restricted.
-- **Audit Logging**: Every action is saved into an audit log (accessible via the `macjet://audit/log` resource).
-
-## 🔎 Inspectors
-
-MacJet connects to several domains for enriched data:
-- **Terminal (psutil)**: Baseline tree, IO, memory, threading.
-- **Hardware (powermetrics)**: Optional `sudo` integration for deep CPU die temps, fan speed, thermal pressure, and strict per-process energy impact.
-- **Browser (Chrome CDP)**: Identifies tab titles for Chrome renderer PIDs.
+1. **ProcessCollector**: The core engine that runs a non-blocking background task every second using `tokio` and `sysinfo`.
+2. **MetricsHistory**: Stores historical context using lock-free ring buffers, allowing MacJet to display 60-second sparklines.
+3. **UI Widgets**: `ratatui` renders the UI at 60FPS using a clean message-passing architecture (`mpsc` channels).
+4. **Reclaim Scorer**: A specialized heuristic engine that continuously evaluates process groups on a 100-point scale.

@@ -1,5 +1,5 @@
 name: 🐛 Bug Report
-description: Report a bug in JetMonitor
+description: Report a bug in MacJet
 title: "[Bug]: "
 labels: ["bug", "triage"]
 body:
@@ -35,22 +35,22 @@ body:
       required: true
 
   - type: input
-    id: python-version
+    id: rust-version
     attributes:
-      label: Python Version
-      description: "Output of `python3 --version`"
-      placeholder: "Python 3.12.0"
+      label: MacJet / Build Version
+      description: "Did you use a GitHub Release binary or `cargo install`?"
+      placeholder: "v2.0.1 (Binary) or Cargo 1.75"
     validations:
       required: true
 
   - type: dropdown
     id: run-mode
     attributes:
-      label: How are you running JetMonitor?
+      label: How are you running MacJet?
       options:
-        - sudo ./jetmonitor.sh (full mode)
-        - ./jetmonitor.sh (basic mode)
-        - python -m jetmonitor
+        - sudo macjet (full mode)
+        - macjet (basic mode)
+        - cargo run --release
         - MCP server (--mcp)
     validations:
       required: true
@@ -78,7 +78,7 @@ body:
       label: Steps to reproduce
       description: Step-by-step instructions to reproduce the issue.
       value: |
-        1. Launch JetMonitor with `sudo ./jetmonitor.sh`
+        1. Launch MacJet with `sudo macjet`
         2. 
         3. 
     validations:

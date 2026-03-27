@@ -1,0 +1,11 @@
+# Faster linking (optional — only applies if lld/mold are installed)
+# macOS: brew install llvm  (provides lld)
+# Linux: sudo apt install mold
+
+# Uncomment below if you have lld/mold installed for faster incremental builds:
+# [target.aarch64-apple-darwin]
+# rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+# [target.x86_64-apple-darwin]
+# rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+# [target.x86_64-unknown-linux-gnu]
+# rustflags = ["-C", "linker=clang", "-C", "link-arg=-fuse-ld=mold"]

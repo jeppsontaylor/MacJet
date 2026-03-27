@@ -1,28 +1,6 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-*.egg-info/
-dist/
-build/
-*.egg
-.eggs/
-
-# Virtual environments
-venv/
-.venv/
-env/
-.env/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-.project
-.settings/
+# Rust
+target/
+Cargo.lock
 
 # macOS
 .DS_Store
@@ -30,21 +8,18 @@ env/
 .LSOverride
 ._*
 
-# Testing & Coverage
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.nox/
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
 
-# Asciinema recordings (large, generated)
+# Recordings
 *.cast
+*.gif
+*.mp4
 
-# Distribution
-*.tar.gz
-*.whl
-
-# Misc
-*.log
-.mypy_cache/
-.ruff_cache/
+# Benchmark artifacts
+benchmarks/results/
+benchmarks/telemetry/

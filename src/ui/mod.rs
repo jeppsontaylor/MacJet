@@ -1,0 +1,12 @@
+pub mod detail_panel;
+pub mod drill_screens;
+pub mod filter_bar;
+pub mod footer;
+pub mod header;
+pub mod help_panel;
+pub mod network_panel;
+pub mod notifications;
+pub mod predict_panel;
+pub mod process_tree;
+pub mod reclaim_panel;
+pub mod styles;
