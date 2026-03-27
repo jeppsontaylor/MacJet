@@ -1,54 +1,68 @@
 # MacJet VHS Tape
-# 
-# Usage: 
-# 1. Run `sudo -v` in your terminal to cache your sudo credentials.
-# 2. Run `vhs scripts/demo.tape`
 #
-# This will automatically record a demo GIF and capture the 3 required screenshots
-# (view_apps.png, view_energy.png, view_reclaim.png) into the assets/ folder.
+# Launch without sudo so VHS (separate PTY) never blocks on Password:. MacJet runs in
+# basic mode; energy view has limited data vs `sudo macjet`. For full metrics on your
+# machine only, see docs/vhs-demo-recording.md (optional sudo + tape edit).
+#
+# From repo root: ./scripts/record-demo.sh
+#
+# Outputs: assets/macjet_demo.gif, view_apps.png, view_energy.png, view_reclaim.png
 
 Output assets/macjet_demo.gif
 Set Shell zsh
-Set FontSize 13
-Set Width 1600
+Set FontSize 22
+Set Width 1680
 Set Height 900
 Set Theme "Molokai"
 Set Framerate 30
 
-# Launch MacJet
-Type "sudo cargo run --release"
-Sleep 500ms
+# Crossterm strips all color if NO_COLOR is set (common in dev shells). ttyd/VHS also
+# needs a true-color-capable term for RGB (38;2 / 48;2) from MacJet's theme.
+Env COLORTERM "truecolor"
+Env TERM "xterm-256color"
+Env NO_COLOR ""
+
+# Launch via wrapper (matches README-style onboarding; still from repo root)
+Type "./macjet.sh"
 Enter
+Sleep 2s
 
 # Give it time to boot and collect initial stats
 Sleep 3s
 
-# Apps View (View 1)
+# Processes view: filter to Google Chrome, then expand (Enter) to show drill-down
+Type "/"
+Type "Google Chrome"
+Enter
+Sleep 1s
+Enter
+Sleep 1s
+
+# Scroll through Chrome children so tab / renderer names are visible in the GIF
+Down
+Sleep 1.5s
+Down
+Sleep 1.5s
+Down
+Sleep 1.5s
+Down
+Sleep 1.5s
+
+# Hero still: Processes with Chrome expanded (inspector updates per row)
 Screenshot assets/view_apps.png
 Sleep 1s
 
-# Navigate down and expand a group
-Down
-Down
-Down
-Sleep 500ms
-Enter
-Sleep 1.5s
-
-# Tree View (View 2)
+# Kill list (2), Energy (3), Network (4), Predict (5)
 Type "2"
 Sleep 1.5s
 
-# Pressure View (View 3)
 Type "3"
-Sleep 1.5s
-
-# Energy View (View 4 - Requires Sudo)
-Type "4"
 Sleep 2.5s
 Screenshot assets/view_energy.png
 
-# Reclaim View (View 5)
+Type "4"
+Sleep 1.5s
+
 Type "5"
 Sleep 2.5s
 Screenshot assets/view_reclaim.png
