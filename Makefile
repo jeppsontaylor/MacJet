@@ -1,42 +1,52 @@
-.PHONY: install test lint format typecheck clean all
+.PHONY: all build release test lint clippy clean mcp run install format check
+.DEFAULT_GOAL := help
 
-# Default: run lint + tests
-all: lint test
+# --- Colors ---
+RED=\033[0;31m
+GREEN=\033[0;32m
+YELLOW=\033[0;33m
+BLUE=\033[0;34m
+NC=\033[0m # No Color
 
-# Install all dependencies (including dev and mcp extras)
-install:
-	pip install -e ".[dev,mcp]"
+# --- Config ---
+BIN=macjet
 
-# Run the full test suite with coverage
-test:
-	pytest tests/ -v --tb=short --cov=macjet --cov-report=term-missing
+help: ## Show this help message
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
-# Run tests matching a keyword (usage: make test-k K=sparkline)
-test-k:
-	pytest tests/ -v -k "$(K)"
+build: ## Build the native binary in debug mode (fast compile)
+	@echo "${BLUE}Building ${BIN} (Debug)...${NC}"
+	cargo build
 
-# Lint with ruff
-lint:
-	ruff check .
+release: ## Build the optimized production binary
+	@echo "${BLUE}Building ${BIN} (Release)...${NC}"
+	cargo build --release
 
-# Auto-format with black
-format:
-	black .
+run: ## Run the TUI natively
+	cargo run --release
 
-# Check formatting without modifying files
-format-check:
-	black --check .
+mcp: ## Run the background MCP server natively
+	cargo run --release -- --mcp
 
-# Type checking (requires pyright or mypy)
-typecheck:
-	python -m mypy macjet/ --ignore-missing-imports
+test: ## Run the entire test suite equivalent to 1:1 python specs
+	@echo "${GREEN}Running test suite...${NC}"
+	cargo test -- --show-output
 
-# Run all CI checks locally (mirrors what GitHub Actions does)
-ci: format-check lint test
+test-mcp: ## Test specifically the MCP models and caching boundaries
+	cargo test mcp:: -- --show-output
 
-# Remove build artifacts and caches
-clean:
-	find . -type d -name __pycache__ -exec rm -rf {} +
-	find . -type d -name .pytest_cache -exec rm -rf {} +
-	find . -type d -name "*.egg-info" -exec rm -rf {} +
-	rm -rf .coverage htmlcov/ dist/ build/
+clippy: lint ## Alias for lint
+lint: ## Run cargo clippy strict lints
+	@echo "${YELLOW}Running clippy lints...${NC}"
+	cargo clippy --all-targets --all-features -- -D warnings
+
+format: ## Run cargo fmt
+	cargo fmt --all
+
+check: format lint test ## Run format, lint, and tests (CI prep)
+
+clean: ## Remove the target/ compilation directory
+	cargo clean
+
+install: release ## Install the binary to ~/.cargo/bin
+	cargo install --path .
