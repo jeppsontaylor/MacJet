@@ -49,6 +49,28 @@ Capabilities advertised in **`initialize`**: tools, resources (with **subscribe*
 | `logging/setLevel` | Acknowledged; level logged under tracing target `macjet_mcp`. |
 | `completion/complete` | Limited completions (e.g. resource URI prefixes, sort hints). |
 
+### Not implemented in this release
+
+The `rmcp` stack supports more handlers than MacJet wires up. The following are **not** advertised or are explicitly unsupported so clients do not rely on them:
+
+- **Sampling** (`sampling/createMessage` and related server-as-model flows)
+- **Tasks** (`tasks/*` — queued long-running tool execution)
+- **Roots** (`roots/list` and workspace roots)
+- **Elicitation** is used **only** for `kill_process` human confirmation when the client declares elicitation support; there is no generic elicitation API for other tools.
+
+### Source layout (Rust)
+
+| Path | Responsibility |
+|------|------------------|
+| [`src/mcp/server.rs`](../src/mcp/server.rs) | `MacJetServer` / `ServerHandler`: `initialize`, tools, resources, templates, subscribe, prompts, completions, logging, `kill_process` + elicitation |
+| [`src/mcp/runtime.rs`](../src/mcp/runtime.rs) | `McpCollectorState`, background tick task, `notify_resource_updated` for subscribers |
+| [`src/mcp/snapshot.rs`](../src/mcp/snapshot.rs) | `McpSnapshot`, `McpMeta`, `wrap`, sorting, heat explanation, network/energy DTO helpers |
+| [`src/mcp/resources.rs`](../src/mcp/resources.rs) | JSON builders shared by `resources/read` and some tools |
+| [`src/mcp/models.rs`](../src/mcp/models.rs) | Serde types for MCP JSON (`SystemOverviewExtended`, `ReclaimCandidateMcp`, …) |
+| [`src/mcp/safety.rs`](../src/mcp/safety.rs) | PID validation, `send_signal`, audit JSONL |
+| [`src/mcp/cache.rs`](../src/mcp/cache.rs) | `AsyncTTLCache` for resource reads |
+| [`src/mcp/elicit.rs`](../src/mcp/elicit.rs) | `KillProcessHumanConfirm` schema for elicitation |
+
 ## Quick setup
 
 ```json

@@ -62,11 +62,13 @@ sequenceDiagram
   par every refresh interval
     L->>M: step
     M->>K: write snapshot
-    L->>R: notify resources/updated
+    L->>R: notifications/resources/updated for subscribers
   end
   S-->>R: JSON meta plus data
   R-->>C: result
 ```
+
+Destructive **`tools/call`** on `kill_process` may issue a client **elicitation** round-trip (when supported) before `safety::send_signal`; see [docs/mcp.md](mcp.md).
 
 See [docs/mcp.md](mcp.md) for the full tool and resource catalog.
 
