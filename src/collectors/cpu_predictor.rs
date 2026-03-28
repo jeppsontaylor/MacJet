@@ -6,6 +6,7 @@
 /// Features (10): lag1..5, mean_10, std_10, mean_30, trend, bias
 /// Ring buffer: 600 samples max (~10 min at 1s tick)
 /// Horizon: 60-step iterated forecast with synthetic feature buffer
+use serde::Serialize;
 use std::time::Instant;
 
 const RING_CAP: usize = 600;
@@ -17,7 +18,7 @@ const MIN_SAMPLES_FOR_TRAIN: usize = 30; // need 30 for mean_30 window
 const TRAIN_INTERVAL: u64 = 60; // train every 60 ticks
 const HORIZON: usize = 60;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct PredictorStats {
     pub rows: usize,
     pub cols: usize,

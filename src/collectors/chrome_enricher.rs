@@ -198,4 +198,9 @@ impl ChromeTabEnricher {
     pub fn get_tab_title_for_pid(&self, pid: u32) -> Option<&str> {
         self.pid_to_tab.get(&pid).map(|t| t.title.as_str())
     }
+
+    /// Copy of tab list for MCP / external consumers.
+    pub fn tabs_cloned(&self) -> Vec<TabEntry> {
+        self.tabs.clone()
+    }
 }
