@@ -59,12 +59,13 @@ fn main() -> io::Result<()> {
     }
 
     if cli.mcp {
-        let runtime = tokio::runtime::Builder::new_current_thread()
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
             .enable_all()
             .build()
             .unwrap();
         runtime.block_on(async {
-            macjet::mcp::server::run_mcp_server().await;
+            macjet::mcp::server::run_mcp_server(cli.refresh_secs, !cli.no_ml).await;
         });
         return Ok(());
     }

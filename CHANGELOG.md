@@ -5,6 +5,11 @@ All notable changes to MacJet will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Changed
+- **MCP server** — Headless collector loop shares the TUI data path; tools and resources return live JSON with a `meta` envelope (`schema_version`, `capabilities`, timestamps). Added resource templates, subscribe + `notifications/resources/updated`, prompts, completions stub, logging `setLevel`, `kill_process` elicitation (with fallback when unsupported), `MACJET_MCP_READONLY`, and `AsyncTTLCache` for reads. Documentation and audit path (`~/.macjet/mcp_audit.jsonl`) aligned with the implementation.
+
 ## [2.0.1] — 2026-03-26
 
 First **Rust-only** release and the supported baseline going forward. This tag supersedes the Python/Textual line for production use.
@@ -31,4 +36,4 @@ First **Rust-only** release and the supported baseline going forward. This tag s
 ### Added
 - **Flight Deck layout** — Adaptive master-detail layout with 5 views (Apps, Tree, Pressure, Energy, Reclaim)
 - **Reclaim (Kill List)** — Intelligent scoring engine ranks processes by reclaimability with risk bands (Safe/Review/Danger)
-- **MCP Server** — 10 tools, 6 resources, 3 prompts for AI agent integration
+- **MCP Server** — (Superseded by Unreleased: live MCP upgrade above.) Earlier docs referenced 10 tools / 6 resources; see current [docs/mcp.md](docs/mcp.md).

@@ -118,6 +118,8 @@ pub struct EnergyEntry {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EnergyReport {
     pub available: bool,
+    #[serde(default)]
+    pub unavailable_reason: String,
     pub entries: Vec<EnergyEntry>,
 }
 
@@ -133,6 +135,63 @@ pub struct NetworkEntry {
 pub struct NetworkReport {
     pub available: bool,
     pub entries: Vec<NetworkEntry>,
+    #[serde(default)]
+    pub system_bytes_in_per_s: f64,
+    #[serde(default)]
+    pub system_bytes_out_per_s: f64,
+}
+
+/// Extended system overview aligned with collectors + thermal (MCP).
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SystemOverviewExtended {
+    pub cpu_percent: f64,
+    pub memory_used_gb: f64,
+    pub memory_total_gb: f64,
+    pub memory_percent: f64,
+    pub swap_total_gb: f64,
+    pub swap_used_gb: f64,
+    pub cpu_brand: String,
+    pub cpu_count_physical: usize,
+    pub thermal_pressure: String,
+    pub fan_rpm: Option<u32>,
+    pub fan_rpm_max: Option<u32>,
+    pub cpu_die_temp_c: f64,
+    pub gpu_die_temp_c: f64,
+    pub gpu_active_percent: f64,
+    pub top_process: String,
+    pub top_cpu_percent: f64,
+    pub process_count: usize,
+    pub verdict: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ReclaimCandidateMcp {
+    pub group_key: String,
+    pub app_name: String,
+    pub icon: String,
+    pub score: u8,
+    pub reclaim_cpu: f64,
+    pub reclaim_mem_mb: f64,
+    pub risk: String,
+    pub reason: String,
+    pub suggested_action: String,
+    pub child_count: usize,
+    pub is_hidden: bool,
+    pub launch_age_s: f64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ReclaimListResult {
+    pub candidates: Vec<ReclaimCandidateMcp>,
+    pub total_considered: usize,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct McpErrorDetail {
+    pub code: String,
+    pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pid: Option<u32>,
 }
 
 #[cfg(test)]

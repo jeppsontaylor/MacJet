@@ -122,22 +122,24 @@ A multi-factor scoring engine ranks every process group on a 100-point scale bas
 Connects to Chrome's DevTools Protocol to map every renderer PID to its actual website tab title. Stop guessing which "Google Chrome Helper (Renderer)" is drawing 100% CPU. Enable with `open -a "Google Chrome" --args --remote-debugging-port=9222`.
 
 ### 🤖 Built-in MCP Server
-MacJet ships a native **Model Context Protocol (MCP)** server natively exposing 10 tools to AI Agents (like Claude Desktop). 
+MacJet exposes a **Model Context Protocol (MCP)** server over stdio with **live** collectors (CPU, memory, swap, processes, network, thermal when root, Chrome CDP tabs, reclaim scoring): **tools**, **resources**, **resource templates**, **subscriptions**, **prompts**, and optional **elicitation** before `kill_process`. See the authoritative list in [docs/mcp.md](docs/mcp.md).
 
-To use it, just configure your MCP client:
+Example client config:
 ```json
 {
   "mcpServers": {
     "macjet": {
       "command": "/Users/YOU/.cargo/bin/macjet",
-      "args": ["--mcp"],
-      "description": "macOS process monitor — CPU, memory, energy, Chrome tabs, process management"
+      "args": ["--mcp", "--refresh", "1"],
+      "description": "macOS performance telemetry for agents"
     }
   }
 }
 ```
 
-> 📖 Read the full MCP capabilities in [docs/mcp.md](docs/mcp.md)
+Use **`MACJET_MCP_READONLY=1`** to disable `kill_process`. Audit log: `~/.macjet/mcp_audit.jsonl`.
+
+> 📖 [docs/mcp.md](docs/mcp.md)
 
 ---
 
