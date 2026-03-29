@@ -63,6 +63,15 @@ pub fn severity_icon(cpu: f64) -> &'static str {
     }
 }
 
+fn cmp_f64_desc(a: f64, b: f64) -> std::cmp::Ordering {
+    match (a.is_nan(), b.is_nan()) {
+        (true, true) => std::cmp::Ordering::Equal,
+        (true, false) => std::cmp::Ordering::Greater,
+        (false, true) => std::cmp::Ordering::Less,
+        (false, false) => b.total_cmp(&a),
+    }
+}
+
 pub fn parse_app_name(proc: &ProcessInfo) -> SmolStr {
     let name = proc.name.as_str();
 
@@ -344,10 +353,8 @@ impl ProcessCollector {
 
         // Sort
         match self.sort_key {
-            SortKey::Cpu => {
-                procs.sort_by(|a, b| b.cpu_percent.partial_cmp(&a.cpu_percent).unwrap())
-            }
-            SortKey::Memory => procs.sort_by(|a, b| b.memory_mb.partial_cmp(&a.memory_mb).unwrap()),
+            SortKey::Cpu => procs.sort_by(|a, b| cmp_f64_desc(a.cpu_percent, b.cpu_percent)),
+            SortKey::Memory => procs.sort_by(|a, b| cmp_f64_desc(a.memory_mb, b.memory_mb)),
             SortKey::Name => {
                 procs.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
             }
@@ -447,7 +454,7 @@ impl ProcessCollector {
         }
 
         let mut sorted_groups: Vec<ProcessGroup> = groups_map.into_values().collect();
-        sorted_groups.sort_by(|a, b| b.total_cpu.partial_cmp(&a.total_cpu).unwrap());
+        sorted_groups.sort_by(|a, b| cmp_f64_desc(a.total_cpu, b.total_cpu));
 
         self.all_procs = procs;
         self.groups = sorted_groups;
@@ -568,6 +575,16 @@ mod tests {
         );
         let result = parse_app_name(&proc);
         assert_eq!(result, "Finder");
+    }
+
+    #[test]
+    fn test_cmp_f64_desc_handles_nan_without_panic() {
+        let mut values = vec![10.0, f64::NAN, 20.0, -1.0];
+        values.sort_by(|a, b| cmp_f64_desc(*a, *b));
+        assert_eq!(values[0], 20.0);
+        assert_eq!(values[1], 10.0);
+        assert_eq!(values[2], -1.0);
+        assert!(values[3].is_nan());
     }
 
     #[test]
