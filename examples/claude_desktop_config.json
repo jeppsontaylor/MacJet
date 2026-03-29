@@ -2,7 +2,7 @@
   "mcpServers": {
     "macjet": {
       "command": "/Users/YOU/.cargo/bin/macjet",
-      "args": ["--mcp"],
+      "args": ["--mcp", "--refresh", "1"],
       "description": "macOS process monitor — CPU, memory, energy, Chrome tabs, process management"
     }
   }

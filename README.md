@@ -25,20 +25,27 @@
   <img src="assets/macjet_demo.gif" alt="Screen recording: MacJet via ./macjet.sh, Processes with Google Chrome expanded, then Kill list, Energy, Network, and Predict views" width="800">
 </p>
 
-<p align="center"><strong>Still frames</strong> — Apps, Energy, Reclaim</p>
+<p align="center"><strong>Disk space</strong> (tab <code>6</code>) — SQLite-backed index, squarified treemap in the terminal (up to <strong>100</strong> tiles per folder; smaller entries roll into <strong>Other (n)</strong> — press <strong>Enter</strong> there for a full list), warm reload, Trash.</p>
+<p align="center"><sub>This is a <strong>character-cell</strong> treemap (not a WinDirStat-style cushion render). See <a href="docs/disk_view.md">docs/disk_view.md</a> for behavior, MCP, and how to record a demo GIF into <code>assets/macjet_disk_demo.gif</code>.</sub></p>
+
+<p align="center"><strong>Still frames</strong> — Apps, Energy, Reclaim, Disk</p>
 <table>
   <tr>
-    <td align="center" width="33%">
+    <td align="center" width="25%">
       <img src="assets/view_apps.png" alt="MacJet Processes view: filter and expanded Google Chrome group with CPU, memory, and inspector" width="100%">
       <br><sub>Apps</sub>
     </td>
-    <td align="center" width="33%">
+    <td align="center" width="25%">
       <img src="assets/view_energy.png" alt="MacJet Energy view: wakeups, thermal state, and battery impact metrics" width="100%">
       <br><sub>Energy</sub>
     </td>
-    <td align="center" width="33%">
+    <td align="center" width="25%">
       <img src="assets/view_reclaim.png" alt="MacJet Reclaim view: scored kill list with risk bands" width="100%">
       <br><sub>Reclaim</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="assets/macjet_disk_treemap_now.png" alt="MacJet Disk view: SQLite-backed index and squarified treemap in the terminal" width="100%">
+      <br><sub>Disk Space Viewer</sub>
     </td>
   </tr>
 </table>
@@ -105,15 +112,16 @@ CPU and RSS are **% of one core** and **MB** from `benchmark_compare` / historic
 ## ✨ Features
 
 ### 🎯 Flight Deck Layout
-Five purpose-built views, switchable with `1`–`5` or `Tab`:
+Core views switch with `1`–`6` or `Tab` (plus **`?`** for Help):
 
-| View | Purpose |
-|------|---------|
-| **Apps** | Processes grouped by application with role-bucket expansion |
-| **Tree** | Raw process hierarchy |
-| **Pressure** | Memory pressure focus |
-| **Energy** | Wakeups, thermal state, battery impact |
-| **Reclaim** | Intelligent Kill List with scored recommendations |
+| Key | View | Purpose |
+|-----|------|---------|
+| `1` | **Processes** | App-centric groups, CPU/memory, inspector |
+| `2` | **Kill List** | Scored reclaim candidates |
+| `3` | **Energy** | Wakeups, thermal, battery impact |
+| `4` | **Network** | Throughput and top talkers |
+| `5` | **Predict** | Online CPU horizon (when ML enabled) |
+| `6` | **Disk** | Downloads-sized index, treemap, dup hints, Trash — [docs/disk_view.md](docs/disk_view.md) |
 
 ### 🧠 Reclaim Engine (Kill List)
 A multi-factor scoring engine ranks every process group on a 100-point scale based on: sustained CPU load, memory footprint, memory growth (leaks), process storms, and high wakeups. Target high-score apps to reclaim your system.
@@ -122,22 +130,24 @@ A multi-factor scoring engine ranks every process group on a 100-point scale bas
 Connects to Chrome's DevTools Protocol to map every renderer PID to its actual website tab title. Stop guessing which "Google Chrome Helper (Renderer)" is drawing 100% CPU. Enable with `open -a "Google Chrome" --args --remote-debugging-port=9222`.
 
 ### 🤖 Built-in MCP Server
-MacJet ships a native **Model Context Protocol (MCP)** server natively exposing 10 tools to AI Agents (like Claude Desktop). 
+MacJet exposes a **Model Context Protocol (MCP)** server over stdio with **live** collectors (CPU, memory, swap, processes, network, thermal when root, Chrome CDP tabs, reclaim scoring) plus **disk index** summaries and duplicate listing (`macjet://disk/*` resources; `get_disk_summary`, `list_disk_duplicates`, `suggest_disk_cleanup`, gated `trash_disk_paths`). See [docs/mcp.md](docs/mcp.md) and [docs/disk_view.md](docs/disk_view.md).
 
-To use it, just configure your MCP client:
+Example client config:
 ```json
 {
   "mcpServers": {
     "macjet": {
       "command": "/Users/YOU/.cargo/bin/macjet",
-      "args": ["--mcp"],
-      "description": "macOS process monitor — CPU, memory, energy, Chrome tabs, process management"
+      "args": ["--mcp", "--refresh", "1"],
+      "description": "macOS performance telemetry for agents"
     }
   }
 }
 ```
 
-> 📖 Read the full MCP capabilities in [docs/mcp.md](docs/mcp.md)
+Use **`MACJET_MCP_READONLY=1`** to disable `kill_process` and **`trash_disk_paths`**. Audit log: `~/.macjet/mcp_audit.jsonl`.
+
+> 📖 [docs/mcp.md](docs/mcp.md)
 
 ---
 
@@ -145,7 +155,7 @@ To use it, just configure your MCP client:
 
 | Key | Action |
 |-----|--------|
-| `1`–`5` | Switch view (Apps / Tree / Pressure / Energy / Reclaim) |
+| `1`–`6` | Switch view (Processes / Kill List / Energy / Network / Predict / Disk) |
 | `Tab` | Cycle through views |
 | `↑` `↓` | Navigate rows |
 | `Enter` | Expand / collapse group or role bucket |

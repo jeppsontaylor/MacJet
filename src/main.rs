@@ -11,7 +11,10 @@ use std::time::{Duration, Instant};
 
 use clap::Parser;
 use crossterm::{
-    event::{self, Event, KeyCode, KeyModifiers},
+    event::{
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers, MouseButton,
+        MouseEventKind,
+    },
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -25,6 +28,7 @@ use ratatui::{
 };
 
 use macjet::app::{AppState, View};
+use macjet::disk::ui::render_disk_view;
 use macjet::ui::{
     detail_panel::DetailPanelWidget, filter_bar::FilterBarWidget, footer::Footer, header::Header,
     help_panel::HelpWidget, network_panel::NetworkPanelWidget, notifications::NotificationOverlay,
@@ -59,18 +63,25 @@ fn main() -> io::Result<()> {
     }
 
     if cli.mcp {
-        let runtime = tokio::runtime::Builder::new_current_thread()
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
             .enable_all()
             .build()
             .unwrap();
         runtime.block_on(async {
-            macjet::mcp::server::run_mcp_server().await;
+            macjet::mcp::server::run_mcp_server(cli.refresh_secs, !cli.no_ml).await;
         });
         return Ok(());
     }
 
     // Setup terminal
-    enable_raw_mode()?;
+    enable_raw_mode().map_err(|e| {
+        eprintln!("MacJet needs an interactive terminal (TTY). Raw mode failed: {e}");
+        eprintln!(
+            "Use Terminal.app, iTerm, Alacritty, etc. — not a pipe or non-interactive task output."
+        );
+        e
+    })?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
@@ -85,10 +96,26 @@ fn main() -> io::Result<()> {
 
     // Restore terminal
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    let mut backend = terminal.backend_mut();
+    let _ = execute!(backend, DisableMouseCapture);
+    execute!(backend, LeaveAlternateScreen)?;
     terminal.show_cursor()?;
 
     result
+}
+
+fn sync_disk_mouse_capture(app: &mut AppState) {
+    let want = app.active_view == View::Disk;
+    if want == app.disk_mouse_capture {
+        return;
+    }
+    let mut out = io::stdout();
+    if want {
+        let _ = execute!(out, EnableMouseCapture);
+    } else {
+        let _ = execute!(out, DisableMouseCapture);
+    }
+    app.disk_mouse_capture = want;
 }
 
 fn run_app(
@@ -108,6 +135,11 @@ fn run_app(
         // ─── Draw ──────────────────────────────────
         terminal.draw(|f| {
             let size = f.area();
+
+            if app.active_view == View::Disk {
+                app.disk.ensure_started();
+                app.disk.poll_events();
+            }
 
             // Compute filter bar height
             let filter_height = if app.filter_visible { 1 } else { 0 };
@@ -163,6 +195,9 @@ fn run_app(
                         PredictPanelWidget::new(&stats, app.system.cpu_percent, app.ml_enabled);
                     f.render_widget(predict_widget, body_area);
                 }
+                View::Disk => {
+                    render_disk_view(f, &mut app.disk, body_area);
+                }
                 View::Help => {
                     f.render_widget(HelpWidget, body_area);
                 }
@@ -173,6 +208,7 @@ fn run_app(
                 Footer {
                     paused: app.paused,
                     ml_enabled: app.ml_enabled,
+                    active_view: app.active_view,
                 },
                 outer[4],
             );
@@ -186,7 +222,46 @@ fn run_app(
         // ─── Event Handling ────────────────────────
         // Poll at 250ms for smoother UI, tick at 1s intervals
         if event::poll(Duration::from_millis(250))? {
-            if let Event::Key(key) = event::read()? {
+            let ev = event::read()?;
+            if let Event::Mouse(me) = ev {
+                if app.active_view == View::Disk {
+                    match me.kind {
+                        MouseEventKind::ScrollDown => {
+                            if app.disk.other_drill.is_some() {
+                                app.disk.other_list_nav_down(3);
+                            } else {
+                                app.disk.list_nav_down(3);
+                            }
+                        }
+                        MouseEventKind::ScrollUp => {
+                            if app.disk.other_drill.is_some() {
+                                app.disk.other_list_nav_up(3);
+                            } else {
+                                app.disk.list_nav_up(3);
+                            }
+                        }
+                        MouseEventKind::Up(MouseButton::Left) => {
+                            if app.disk.layout_treemap {
+                                for (i, t) in app.disk.tiles.iter().enumerate() {
+                                    let r = t.rect;
+                                    if me.column >= r.x
+                                        && me.column < r.x.saturating_add(r.width)
+                                        && me.row >= r.y
+                                        && me.row < r.y.saturating_add(r.height)
+                                    {
+                                        app.disk.tree_state.focus = i;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                app.refresh_selection_context();
+                continue;
+            }
+            if let Event::Key(key) = ev {
                 let now_secs = || {
                     std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
@@ -217,6 +292,71 @@ fn run_app(
                 }
 
                 // ─── Normal Mode Input ─────────────
+                if app.active_view == View::Disk && app.disk.confirm_delete {
+                    const CONFIRM_PAGE: usize = 6;
+                    let max_scroll = app.disk.marked.len().saturating_sub(CONFIRM_PAGE);
+                    match key.code {
+                        KeyCode::Esc => app.disk.confirm_delete = false,
+                        KeyCode::Enter => match app.disk.trash_marked() {
+                            Ok(n) => app
+                                .notifications
+                                .push(format!("Moved {n} item(s) to Trash")),
+                            Err(e) => app.notifications.push(e),
+                        },
+                        KeyCode::Up => {
+                            app.disk.confirm_scroll = app.disk.confirm_scroll.saturating_sub(1);
+                        }
+                        KeyCode::Down => {
+                            app.disk.confirm_scroll = (app.disk.confirm_scroll + 1).min(max_scroll);
+                        }
+                        _ => {}
+                    }
+                    app.refresh_selection_context();
+                    continue;
+                }
+
+                if app.active_view == View::Disk && app.disk.dup_review.is_some() {
+                    match key.code {
+                        KeyCode::Esc | KeyCode::Backspace => app.disk.dup_review_escape(),
+                        KeyCode::Enter => {
+                            if let Err(e) = app.disk.dup_review_on_enter() {
+                                app.notifications.push(e);
+                            }
+                        }
+                        KeyCode::Up => app.disk.dup_review_nav_up(1),
+                        KeyCode::Down => app.disk.dup_review_nav_down(1),
+                        KeyCode::PageUp => app.disk.dup_review_nav_up(10),
+                        KeyCode::PageDown => app.disk.dup_review_nav_down(10),
+                        KeyCode::Home => app.disk.dup_review_home(),
+                        KeyCode::End => app.disk.dup_review_end(),
+                        _ => {}
+                    }
+                    app.refresh_selection_context();
+                    continue;
+                }
+
+                if app.active_view == View::Disk && app.disk.search_bar_active {
+                    match key.code {
+                        KeyCode::Esc => {
+                            app.disk.search_bar_active = false;
+                        }
+                        KeyCode::Enter => {
+                            app.disk.search_bar_active = false;
+                        }
+                        KeyCode::Backspace => {
+                            app.disk.search_buffer.pop();
+                            app.disk.set_disk_search(app.disk.search_buffer.clone());
+                        }
+                        KeyCode::Char(c) => {
+                            app.disk.search_buffer.push(c);
+                            app.disk.set_disk_search(app.disk.search_buffer.clone());
+                        }
+                        _ => {}
+                    }
+                    app.refresh_selection_context();
+                    continue;
+                }
+
                 match key.code {
                     // Quit
                     KeyCode::Char('q') => {
@@ -228,11 +368,15 @@ fn run_app(
                         app.should_quit = true;
                     }
 
-                    // Pause/Resume
+                    // Pause/Resume (Disk: mark for trash)
                     KeyCode::Char(' ') => {
-                        app.paused = !app.paused;
-                        let label = if app.paused { "Paused" } else { "Resumed" };
-                        app.notifications.push(label);
+                        if app.active_view == View::Disk {
+                            app.disk.toggle_mark();
+                        } else {
+                            app.paused = !app.paused;
+                            let label = if app.paused { "Paused" } else { "Resumed" };
+                            app.notifications.push(label);
+                        }
                     }
 
                     // View switching
@@ -241,6 +385,7 @@ fn run_app(
                     KeyCode::Char('3') => app.active_view = View::Energy,
                     KeyCode::Char('4') => app.active_view = View::Network,
                     KeyCode::Char('5') => app.active_view = View::Predict,
+                    KeyCode::Char('6') => app.active_view = View::Disk,
                     KeyCode::Char('?') => {
                         app.active_view = if app.active_view == View::Help {
                             View::Processes
@@ -248,20 +393,89 @@ fn run_app(
                             View::Help
                         };
                     }
-                    KeyCode::Tab | KeyCode::Right => {
+                    KeyCode::Tab => {
                         app.active_view = app.active_view.next();
                     }
+                    KeyCode::Right => {
+                        if app.active_view == View::Disk && app.disk.other_drill.is_some() {
+                            // keep focus on Disk while browsing the Other list
+                        } else if app.active_view == View::Disk && app.disk.layout_treemap {
+                            app.disk.treemap_nav(2);
+                        } else {
+                            app.active_view = app.active_view.next();
+                        }
+                    }
                     KeyCode::Left => {
-                        app.active_view = app.active_view.prev();
+                        if app.active_view == View::Disk && app.disk.other_drill.is_some() {
+                            app.disk.close_other_drill();
+                        } else if app.active_view == View::Disk && app.disk.layout_treemap {
+                            app.disk.treemap_nav(0);
+                        } else {
+                            app.active_view = app.active_view.prev();
+                        }
                     }
 
                     // Filter
                     KeyCode::Char('/') => {
-                        app.filter_visible = true;
-                        app.filter_input.clear();
+                        if app.active_view == View::Disk {
+                            app.disk.search_bar_active = true;
+                            app.disk.search_buffer.clear();
+                            app.disk.set_disk_search(String::new());
+                        } else {
+                            app.filter_visible = true;
+                            app.filter_input.clear();
+                        }
                     }
                     KeyCode::Esc => {
-                        app.clear_filter();
+                        if app.active_view == View::Disk && app.disk.other_drill.is_some() {
+                            app.disk.close_other_drill();
+                        } else {
+                            app.clear_filter();
+                        }
+                    }
+
+                    KeyCode::Backspace => {
+                        if app.active_view == View::Disk {
+                            app.disk.drill_up();
+                        }
+                    }
+
+                    KeyCode::Char('r') | KeyCode::Char('R') => {
+                        if app.active_view == View::Disk {
+                            app.disk.request_rescan();
+                            app.notifications.push("Disk rescan started".to_string());
+                        }
+                    }
+
+                    KeyCode::Char('d') => {
+                        if app.active_view == View::Disk {
+                            app.disk.open_dup_review();
+                        }
+                    }
+
+                    KeyCode::Char('t') => {
+                        if app.active_view == View::Disk && !app.disk.marked.is_empty() {
+                            app.disk.confirm_scroll = 0;
+                            app.disk.confirm_delete = true;
+                        }
+                    }
+
+                    KeyCode::Char('o') => {
+                        if app.active_view == View::Disk {
+                            match app.disk.reveal_selected_in_finder() {
+                                Ok(()) => app.notifications.push("Revealed in Finder"),
+                                Err(e) => app.notifications.push(e),
+                            }
+                        }
+                    }
+
+                    KeyCode::Char('u') => {
+                        if app.active_view == View::Disk && !app.disk.last_trashed.is_empty() {
+                            app.notifications.push(format!(
+                                "Last batch: {} item(s) — restore from Trash if needed",
+                                app.disk.last_trashed.len()
+                            ));
+                        }
                     }
 
                     // Sort cycling
@@ -273,54 +487,120 @@ fn run_app(
                     // Navigation (Up/Down/PgUp/PgDn/Home/End)
                     KeyCode::Up => {
                         app.interaction_pause_until = now_secs() + 3.0;
-                        handle_nav_up(&mut app, 1);
+                        if app.active_view == View::Disk {
+                            if app.disk.other_drill.is_some() {
+                                app.disk.other_list_nav_up(1);
+                            } else if app.disk.layout_treemap {
+                                app.disk.treemap_nav(1);
+                            } else {
+                                app.disk.list_nav_up(1);
+                            }
+                        } else {
+                            handle_nav_up(&mut app, 1);
+                        }
                     }
                     KeyCode::Down => {
                         app.interaction_pause_until = now_secs() + 3.0;
-                        handle_nav_down(&mut app, 1);
+                        if app.active_view == View::Disk {
+                            if app.disk.other_drill.is_some() {
+                                app.disk.other_list_nav_down(1);
+                            } else if app.disk.layout_treemap {
+                                app.disk.treemap_nav(3);
+                            } else {
+                                app.disk.list_nav_down(1);
+                            }
+                        } else {
+                            handle_nav_down(&mut app, 1);
+                        }
                     }
                     KeyCode::PageUp => {
                         app.interaction_pause_until = now_secs() + 3.0;
-                        handle_nav_up(&mut app, 10);
+                        if app.active_view == View::Disk {
+                            if app.disk.other_drill.is_some() {
+                                app.disk.other_list_nav_up(10);
+                            } else {
+                                app.disk.list_nav_up(10);
+                            }
+                        } else {
+                            handle_nav_up(&mut app, 10);
+                        }
                     }
                     KeyCode::PageDown => {
                         app.interaction_pause_until = now_secs() + 3.0;
-                        handle_nav_down(&mut app, 10);
+                        if app.active_view == View::Disk {
+                            if app.disk.other_drill.is_some() {
+                                app.disk.other_list_nav_down(10);
+                            } else {
+                                app.disk.list_nav_down(10);
+                            }
+                        } else {
+                            handle_nav_down(&mut app, 10);
+                        }
                     }
                     KeyCode::Home => {
                         app.interaction_pause_until = now_secs() + 3.0;
-                        if let Some(tree) = app.active_tree_mut() {
+                        if app.active_view == View::Disk {
+                            if let Some(ref ix) = app.disk.other_drill {
+                                if !ix.is_empty() {
+                                    app.disk.other_table_state.select(Some(0));
+                                }
+                            } else {
+                                app.disk.list_state.select(Some(0));
+                                app.disk.tree_state.focus = 0;
+                            }
+                        } else if let Some(tree) = app.active_tree_mut() {
                             tree.home();
                         }
                     }
                     KeyCode::End => {
                         app.interaction_pause_until = now_secs() + 3.0;
-                        match app.active_view {
-                            View::Processes | View::Energy => {
-                                let max = match app.active_view {
-                                    View::Processes => app.processes_tree.row_keys.len(),
-                                    View::Energy => app.energy_tree.row_keys.len(),
-                                    _ => 0,
-                                };
-                                if let Some(tree) = app.active_tree_mut() {
-                                    tree.end(max);
+                        if app.active_view == View::Disk {
+                            if let Some(ref ix) = app.disk.other_drill {
+                                let max = ix.len();
+                                if max > 0 {
+                                    app.disk.other_table_state.select(Some(max - 1));
+                                }
+                            } else {
+                                let max = app.disk.children.len();
+                                if max > 0 {
+                                    app.disk.list_state.select(Some(max - 1));
+                                    if !app.disk.tiles.is_empty() {
+                                        app.disk.tree_state.focus = app.disk.tiles.len() - 1;
+                                    }
                                 }
                             }
-                            _ => {}
+                        } else {
+                            match app.active_view {
+                                View::Processes | View::Energy => {
+                                    let max = match app.active_view {
+                                        View::Processes => app.processes_tree.row_keys.len(),
+                                        View::Energy => app.energy_tree.row_keys.len(),
+                                        _ => 0,
+                                    };
+                                    if let Some(tree) = app.active_tree_mut() {
+                                        tree.end(max);
+                                    }
+                                }
+                                _ => {}
+                            }
                         }
                     }
 
-                    // Expand/Collapse
+                    // Expand/Collapse (Disk: drill into folder)
                     KeyCode::Enter => {
                         app.interaction_pause_until = now_secs() + 3.0;
-                        match app.active_view {
-                            View::Processes => {
-                                app.processes_tree.toggle_selected();
+                        if app.active_view == View::Disk {
+                            app.disk.drill_into();
+                        } else {
+                            match app.active_view {
+                                View::Processes => {
+                                    app.processes_tree.toggle_selected();
+                                }
+                                View::Energy => {
+                                    app.energy_tree.toggle_selected();
+                                }
+                                _ => {}
                             }
-                            View::Energy => {
-                                app.energy_tree.toggle_selected();
-                            }
-                            _ => {}
                         }
                     }
 
@@ -329,6 +609,7 @@ fn run_app(
 
                 // Update selection context after every key event
                 app.refresh_selection_context();
+                sync_disk_mouse_capture(&mut app);
             }
         }
 

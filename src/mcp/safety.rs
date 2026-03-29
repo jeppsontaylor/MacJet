@@ -191,6 +191,30 @@ pub fn send_signal(
     }
 }
 
+/// Append a disk-trash MCP action to the same JSONL audit log as `kill_process`.
+pub fn audit_disk_trash(paths: &[String], success: bool, error: &str) {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let entry = serde_json::json!({
+        "ts": format!("timestamp-{}", now),
+        "tool": "trash_disk_paths",
+        "paths": paths,
+        "success": success,
+        "error": error,
+    });
+    if let Ok(mut file) = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(audit_log_path())
+    {
+        if let Ok(line) = serde_json::to_string(&entry) {
+            let _ = writeln!(file, "{}", line);
+        }
+    }
+}
+
 pub fn get_audit_log(limit: usize) -> String {
     let path = audit_log_path();
     if !path.exists() {
