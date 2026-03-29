@@ -1,4 +1,5 @@
 pub mod cache;
+pub mod disk_index;
 pub mod elicit;
 pub mod models;
 pub mod resources;

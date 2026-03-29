@@ -2,14 +2,18 @@
 use crate::mcp::models::ProcessListResult;
 use crate::mcp::models::ReclaimCandidateMcp;
 use crate::mcp::models::ReclaimListResult;
+use crate::mcp::safety;
 use crate::mcp::snapshot::{
     chrome_tabs_result, energy_report_from_snapshot, find_group_by_name, find_group_by_pid,
     network_report_from_snapshot, sorted_groups, system_overview_extended, wrap,
 };
 use crate::mcp::snapshot::{group_to_detail, group_to_summary, McpSnapshot};
-use crate::mcp::safety;
 
-pub fn json_system_overview(snap: &McpSnapshot, include_swap: bool, include_thermal: bool) -> String {
+pub fn json_system_overview(
+    snap: &McpSnapshot,
+    include_swap: bool,
+    include_thermal: bool,
+) -> String {
     let data = system_overview_extended(snap, include_swap, include_thermal);
     serde_json::to_string(&wrap(snap, data)).unwrap_or_default()
 }

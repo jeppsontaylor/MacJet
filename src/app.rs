@@ -9,6 +9,7 @@ use crate::collectors::process_collector::{ProcessCollector, ProcessGroup, Proce
 /// Central state struct, view enum, tick orchestration,
 /// per-view tree states, filter, notifications, and selection context.
 use crate::collectors::system_stats::{SystemCollector, SystemSnapshot};
+use crate::disk::DiskViewModel;
 use crate::telemetry::SelfTelemetry;
 use crate::ui::notifications::NotificationCenter;
 use crate::ui::process_tree::ProcessTreeState;
@@ -21,6 +22,7 @@ pub enum View {
     Energy,
     Network,
     Predict,
+    Disk,
     Help,
 }
 
@@ -32,6 +34,7 @@ impl View {
             View::Energy => "Energy",
             View::Network => "Network",
             View::Predict => "Predict",
+            View::Disk => "Disk",
             View::Help => "Help",
         }
     }
@@ -43,6 +46,7 @@ impl View {
             View::Energy,
             View::Network,
             View::Predict,
+            View::Disk,
             View::Help,
         ]
     }
@@ -54,6 +58,7 @@ impl View {
             View::Energy => "3",
             View::Network => "4",
             View::Predict => "5",
+            View::Disk => "6",
             View::Help => "?",
         }
     }
@@ -65,7 +70,8 @@ impl View {
             View::Reclaim => View::Energy,
             View::Energy => View::Network,
             View::Network => View::Predict,
-            View::Predict => View::Processes,
+            View::Predict => View::Disk,
+            View::Disk => View::Processes,
             View::Help => View::Processes,
         }
     }
@@ -73,11 +79,12 @@ impl View {
     /// Cycle to the previous view (Left arrow)
     pub fn prev(self) -> View {
         match self {
-            View::Processes => View::Predict,
+            View::Processes => View::Disk,
             View::Reclaim => View::Processes,
             View::Energy => View::Reclaim,
             View::Network => View::Energy,
             View::Predict => View::Network,
+            View::Disk => View::Predict,
             View::Help => View::Processes,
         }
     }
@@ -119,6 +126,10 @@ pub struct AppState {
 
     /// When `false`, the online CPU predictor (RLS) does not sample or train (`--no-ml`).
     pub ml_enabled: bool,
+
+    pub disk: DiskViewModel,
+    /// Crossterm mouse capture enabled while Disk view is active.
+    pub disk_mouse_capture: bool,
 }
 
 impl AppState {
@@ -161,11 +172,18 @@ impl AppState {
             selected_reclaim_group: None,
 
             ml_enabled,
+
+            disk: DiskViewModel::new(),
+            disk_mouse_capture: false,
         }
     }
 
     /// Called every 1s by the fast-lane tick.
     pub fn tick(&mut self) {
+        if self.active_view != View::Disk {
+            self.disk.poll_events();
+        }
+
         if self.paused {
             return;
         }

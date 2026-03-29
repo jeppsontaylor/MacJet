@@ -1,6 +1,6 @@
 # AI Agent Integration (MCP Server)
 
-MacJet runs a **Model Context Protocol** server over stdio (`macjet --mcp`) using the same collector logic as the TUI: `sysinfo` processes, network deltas, optional **powermetrics** (when root), Chrome CDP tab titles (port 9222), and the **reclaim** scorer. The MCP server maintains a **live `McpSnapshot`** updated on every refresh interval and returns **`meta` + `data`** JSON so agents always know freshness and capability flags.
+MacJet runs a **Model Context Protocol** server over stdio (`macjet --mcp`) using the same collector logic as the TUI: `sysinfo` processes, network deltas, optional **powermetrics** (when root), Chrome CDP tab titles (port 9222), and the **reclaim** scorer. **Disk index** data (`macjet://disk/*`, disk tools) is read from the same **SQLite** file the TUI builds (`default_disk_index_path()`); run the Disk tab once so the index exists. The MCP server maintains a **live `McpSnapshot`** updated on every refresh interval and returns **`meta` + `data`** JSON so agents always know freshness and capability flags.
 
 ## Architecture (agent view)
 
@@ -69,7 +69,10 @@ The `rmcp` stack supports more handlers than MacJet wires up. The following are 
 | [`src/mcp/models.rs`](../src/mcp/models.rs) | Serde types for MCP JSON (`SystemOverviewExtended`, `ReclaimCandidateMcp`, …) |
 | [`src/mcp/safety.rs`](../src/mcp/safety.rs) | PID validation, `send_signal`, audit JSONL |
 | [`src/mcp/cache.rs`](../src/mcp/cache.rs) | `AsyncTTLCache` for resource reads |
+| [`src/mcp/disk_index.rs`](../src/mcp/disk_index.rs) | Read-only disk SQLite: summary, duplicates, directory children, gated trash |
 | [`src/mcp/elicit.rs`](../src/mcp/elicit.rs) | `KillProcessHumanConfirm` schema for elicitation |
+
+Disk resources and tools are summarized in [disk_view.md](disk_view.md).
 
 ## Quick setup
 

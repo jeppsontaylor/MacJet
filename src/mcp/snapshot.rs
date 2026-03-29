@@ -93,7 +93,10 @@ impl Default for McpSnapshot {
     }
 }
 
-fn top_energy_rows(processes: &rustc_hash::FxHashMap<u32, EnergyInfo>, limit: usize) -> Vec<EnergyInfoRow> {
+fn top_energy_rows(
+    processes: &rustc_hash::FxHashMap<u32, EnergyInfo>,
+    limit: usize,
+) -> Vec<EnergyInfoRow> {
     let mut v: Vec<&EnergyInfo> = processes.values().collect();
     v.sort_by(|a, b| {
         b.wakeups_per_s
@@ -186,7 +189,10 @@ pub fn group_to_summary(g: &ProcessGroup) -> crate::mcp::models::ProcessSummary 
     }
 }
 
-pub fn process_to_child(p: &ProcessInfo, include_cmdline: bool) -> crate::mcp::models::ChildProcess {
+pub fn process_to_child(
+    p: &ProcessInfo,
+    include_cmdline: bool,
+) -> crate::mcp::models::ChildProcess {
     let cmdline = if include_cmdline {
         p.cmdline
             .iter()
@@ -206,7 +212,10 @@ pub fn process_to_child(p: &ProcessInfo, include_cmdline: bool) -> crate::mcp::m
     }
 }
 
-pub fn group_to_detail(g: &ProcessGroup, include_cmdline: bool) -> crate::mcp::models::ProcessDetail {
+pub fn group_to_detail(
+    g: &ProcessGroup,
+    include_cmdline: bool,
+) -> crate::mcp::models::ProcessDetail {
     let children: Vec<_> = g
         .processes
         .iter()
@@ -227,9 +236,8 @@ pub fn group_to_detail(g: &ProcessGroup, include_cmdline: bool) -> crate::mcp::m
 fn chrome_tabs_for_group(g: &ProcessGroup) -> Vec<crate::mcp::models::ChromeTab> {
     let mut out = Vec::new();
     let name_lower = g.name.to_lowercase();
-    let is_chrome = name_lower.contains("chrome")
-        || name_lower.contains("brave")
-        || name_lower.contains("arc");
+    let is_chrome =
+        name_lower.contains("chrome") || name_lower.contains("brave") || name_lower.contains("arc");
     if !is_chrome {
         return out;
     }
@@ -267,16 +275,16 @@ pub fn find_group_by_name<'a>(groups: &'a [ProcessGroup], name: &str) -> Option<
         .iter()
         .find(|g| g.name.as_str().eq_ignore_ascii_case(n))
         .or_else(|| {
-            groups.iter().find(|g| {
-                g.name
-                    .to_lowercase()
-                    .contains(n_lower.as_str())
-            })
+            groups
+                .iter()
+                .find(|g| g.name.to_lowercase().contains(n_lower.as_str()))
         })
 }
 
 pub fn find_group_by_pid<'a>(groups: &'a [ProcessGroup], pid: u32) -> Option<&'a ProcessGroup> {
-    groups.iter().find(|g| g.processes.iter().any(|p| p.pid == pid))
+    groups
+        .iter()
+        .find(|g| g.processes.iter().any(|p| p.pid == pid))
 }
 
 pub fn sorted_groups(
@@ -364,7 +372,9 @@ pub fn explain_heat(
         "Check thermal_pressure in get_system_overview when powermetrics is available.".to_string(),
     ];
     if snapshot.meta.capabilities.chrome_cdp {
-        recommendations.push("Use list_chrome_tabs to correlate heavy Chrome renderer CPU with tabs.".to_string());
+        recommendations.push(
+            "Use list_chrome_tabs to correlate heavy Chrome renderer CPU with tabs.".to_string(),
+        );
     }
     let detailed = format!(
         "System CPU {:.1}%, memory {:.1}% used. Top group: {} at {:.1}% CPU. Thermal: {}.",
@@ -513,16 +523,8 @@ pub fn system_overview_extended(
         } else {
             None
         },
-        cpu_die_temp_c: if include_thermal {
-            t.cpu_die_temp
-        } else {
-            0.0
-        },
-        gpu_die_temp_c: if include_thermal {
-            t.gpu_die_temp
-        } else {
-            0.0
-        },
+        cpu_die_temp_c: if include_thermal { t.cpu_die_temp } else { 0.0 },
+        gpu_die_temp_c: if include_thermal { t.gpu_die_temp } else { 0.0 },
         gpu_active_percent: if include_thermal {
             t.gpu_active_percent
         } else {
@@ -584,10 +586,7 @@ mod tests {
 
     #[test]
     fn sorted_groups_cpu_order() {
-        let g = vec![
-            sample_group("a", 10.0),
-            sample_group("b", 50.0),
-        ];
+        let g = vec![sample_group("a", 10.0), sample_group("b", 50.0)];
         let s = sorted_groups(&g, "cpu", "", true);
         assert_eq!(s[0].name.as_str(), "b");
     }

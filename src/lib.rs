@@ -8,6 +8,7 @@ pub mod actions;
 pub mod app;
 pub mod benchmark_fingerprint;
 pub mod collectors;
+pub mod disk;
 pub mod inspectors;
 pub mod mcp;
 pub mod telemetry;

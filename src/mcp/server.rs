@@ -1,6 +1,9 @@
 /// MacJet MCP — RMCP server: live collectors, tools, resources, prompts, subscriptions.
 use crate::mcp::cache::AsyncTTLCache;
-use serde_json::json;
+use crate::mcp::disk_index::{
+    json_disk_directory, json_disk_duplicates, json_disk_summary, json_suggest_disk_cleanup,
+    trash_paths_mcp,
+};
 use crate::mcp::elicit::KillProcessHumanConfirm;
 use crate::mcp::models::{McpErrorDetail, ProcessListResult};
 use crate::mcp::resources::{
@@ -8,6 +11,7 @@ use crate::mcp::resources::{
     json_process_pid, json_processes_top, json_reclaim, json_system_overview,
 };
 use crate::mcp::runtime::McpCollectorState;
+use crate::mcp::safety::audit_disk_trash;
 use crate::mcp::snapshot::{
     explain_heat, sorted_groups, system_overview_extended, wrap, McpSnapshot,
 };
@@ -17,12 +21,13 @@ use rmcp::model::*;
 use rmcp::service::{ElicitationError, NotificationContext, Peer, RequestContext, RoleServer};
 use rmcp::ErrorData as McpError;
 use rmcp::ServiceExt;
+use serde_json::json;
 use std::collections::HashSet;
 use std::env;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 
-const INSTRUCTIONS: &str = "MacJet exposes live macOS CPU, memory, processes, network, thermal (when root), Chrome CDP tabs, and reclaim scoring. Use get_system_overview then list_process_groups. Responses include a meta object (schema_version, collected_at_unix, capabilities). Process cmdlines are omitted unless include_cmdline=true. Set MACJET_MCP_READONLY=1 to disable kill_process. Audit log: ~/.macjet/mcp_audit.jsonl.";
+const INSTRUCTIONS: &str = "MacJet exposes live macOS CPU, memory, processes, network, thermal (when root), Chrome CDP tabs, reclaim scoring, and disk index summaries (SQLite under the MacJet cache dir). Use get_system_overview then list_process_groups. Disk data is stale until the TUI Disk tab completes a scan. Responses include a meta object (schema_version, collected_at_unix, capabilities). Process cmdlines are omitted unless include_cmdline=true. Set MACJET_MCP_READONLY=1 to disable kill_process and trash_disk_paths. Audit log: ~/.macjet/mcp_audit.jsonl.";
 
 fn mcp_readonly() -> bool {
     env::var("MACJET_MCP_READONLY")
@@ -175,6 +180,39 @@ impl MacJetServer {
                 "Online CPU predictor stats when ML enabled; otherwise explains disabled state.",
                 json!({ "type": "object", "properties": {} }),
             ),
+            tool(
+                "get_disk_summary",
+                "Disk index summary from SQLite (root, counts, reclaimable bytes, dup groups). Optional db_path overrides default cache location.",
+                json!({
+                    "type": "object",
+                    "properties": {
+                        "db_path": { "type": "string", "description": "Optional path to disk_index.sqlite" }
+                    }
+                }),
+            ),
+            tool(
+                "list_disk_duplicates",
+                "Top duplicate file rows from the disk index (paginated by limit).",
+                json!({
+                    "type": "object",
+                    "properties": {
+                        "db_path": { "type": "string" },
+                        "limit": { "type": "integer", "default": 50, "minimum": 1, "maximum": 500 },
+                        "min_size": { "type": "integer", "default": 0, "minimum": 0 },
+                        "only_reclaimable": { "type": "boolean", "default": false }
+                    }
+                }),
+            ),
+            tool(
+                "suggest_disk_cleanup",
+                "Structured safe/review/danger hints from LIKELY_DELETE duplicate flags in the index.",
+                json!({
+                    "type": "object",
+                    "properties": {
+                        "db_path": { "type": "string" }
+                    }
+                }),
+            ),
         ];
         if !readonly {
             tools.push(tool(
@@ -186,6 +224,22 @@ impl MacJetServer {
                     "properties": {
                         "pid": { "type": "integer", "minimum": 1 },
                         "reason": { "type": "string" }
+                    }
+                }),
+            ));
+            tools.push(tool(
+                "trash_disk_paths",
+                "Move files to Trash and remove from disk index. Paths must be under the indexed root when root metadata is set. Logged to audit JSONL.",
+                json!({
+                    "type": "object",
+                    "required": ["paths"],
+                    "properties": {
+                        "paths": {
+                            "type": "array",
+                            "items": { "type": "string" },
+                            "description": "Absolute file paths"
+                        },
+                        "db_path": { "type": "string" }
                     }
                 }),
             ));
@@ -214,18 +268,13 @@ fn parse_uri_query(uri: &str) -> std::collections::HashMap<String, String> {
     m
 }
 
-async fn read_resource_body(
-    server: &MacJetServer,
-    uri: &str,
-) -> Result<String, McpError> {
+async fn read_resource_body(server: &MacJetServer, uri: &str) -> Result<String, McpError> {
     let snap = server.snapshot.read().await.clone();
 
     match uri {
         "macjet://system/overview" | "system://overview" => Ok(server
             .cache
-            .get(uri, || async {
-                json_system_overview(&snap, true, true)
-            })
+            .get(uri, || async { json_system_overview(&snap, true, true) })
             .await),
         "macjet://processes/top" | "process://top" => Ok(server
             .cache
@@ -246,6 +295,32 @@ async fn read_resource_body(
         "macjet://chrome/tabs" => Ok(json_chrome(&snap)),
         "macjet://energy/latest" => Ok(json_energy(&snap, 32)),
         "macjet://audit/recent" => Ok(json_audit_wrapped(&snap, 50)),
+        "macjet://disk/summary" => Ok(json_disk_summary(&snap, None)),
+        _ if uri.starts_with("macjet://disk/duplicates") => {
+            let q = parse_uri_query(uri);
+            let limit = q
+                .get("limit")
+                .and_then(|s| s.parse::<u64>().ok())
+                .unwrap_or(50);
+            let min_size = q
+                .get("min_size")
+                .and_then(|s| s.parse::<u64>().ok())
+                .unwrap_or(0);
+            let only = q
+                .get("only_reclaimable")
+                .map(|s| s == "1" || s.eq_ignore_ascii_case("true"))
+                .unwrap_or(false);
+            Ok(json_disk_duplicates(&snap, None, limit, min_size, only))
+        }
+        _ if uri.starts_with("macjet://disk/directory") => {
+            let q = parse_uri_query(uri);
+            let path = q
+                .get("path")
+                .cloned()
+                .filter(|s| !s.is_empty())
+                .ok_or_else(|| McpError::invalid_params("missing path query parameter", None))?;
+            Ok(json_disk_directory(&snap, None, &path))
+        }
         _ if uri.starts_with("macjet://process/pid/") => {
             let rest = uri.trim_start_matches("macjet://process/pid/");
             let pid: u32 = rest
@@ -280,10 +355,7 @@ impl ServerHandler for MacJetServer {
             .enable_completions()
             .build();
         ServerInfo::new(caps)
-            .with_server_info(Implementation::new(
-                "macjet",
-                env!("CARGO_PKG_VERSION"),
-            ))
+            .with_server_info(Implementation::new("macjet", env!("CARGO_PKG_VERSION")))
             .with_instructions(INSTRUCTIONS.to_string())
     }
 
@@ -359,6 +431,7 @@ impl ServerHandler for MacJetServer {
             res("macjet://chrome/tabs", "Chrome CDP tabs"),
             res("macjet://energy/latest", "Energy / powermetrics top"),
             res("macjet://audit/recent", "MCP audit log excerpt"),
+            res("macjet://disk/summary", "Disk index summary (SQLite)"),
         ];
         std::future::ready(Ok(ListResourcesResult {
             resources,
@@ -371,7 +444,8 @@ impl ServerHandler for MacJetServer {
         &self,
         _request: Option<PaginatedRequestParams>,
         _context: RequestContext<RoleServer>,
-    ) -> impl std::future::Future<Output = Result<ListResourceTemplatesResult, McpError>> + Send + '_ {
+    ) -> impl std::future::Future<Output = Result<ListResourceTemplatesResult, McpError>> + Send + '_
+    {
         let t1 = Annotated {
             raw: RawResourceTemplate::new(
                 "macjet://process/group?name={name}",
@@ -387,8 +461,25 @@ impl ServerHandler for MacJetServer {
                 .with_mime_type("application/json"),
             annotations: None,
         };
+        let t3 = Annotated {
+            raw: RawResourceTemplate::new(
+                "macjet://disk/directory?path={path}",
+                "Disk index children under path",
+            )
+            .with_description("path = parent directory as stored in the index (often absolute)")
+            .with_mime_type("application/json"),
+            annotations: None,
+        };
+        let t4 = Annotated {
+            raw: RawResourceTemplate::new(
+                "macjet://disk/duplicates?limit={limit}",
+                "Top duplicate rows from disk index",
+            )
+            .with_mime_type("application/json"),
+            annotations: None,
+        };
         std::future::ready(Ok(ListResourceTemplatesResult {
-            resource_templates: vec![t1, t2],
+            resource_templates: vec![t1, t2, t3, t4],
             next_cursor: None,
             meta: None,
         }))
@@ -404,8 +495,7 @@ impl ServerHandler for MacJetServer {
         async move {
             let json_str = read_resource_body(&server, uri.as_str()).await?;
             Ok(ReadResourceResult::new(vec![ResourceContents::text(
-                json_str,
-                uri,
+                json_str, uri,
             )
             .with_mime_type("application/json")]))
         }
@@ -450,45 +540,34 @@ impl ServerHandler for MacJetServer {
     ) -> impl std::future::Future<Output = Result<GetPromptResult, McpError>> + Send + '_ {
         let name = request.name;
         let body = match name.as_str() {
-            "diagnose_cpu_spike" => {
-                "You are diagnosing elevated CPU on macOS via MacJet MCP.\n\
+            "diagnose_cpu_spike" => "You are diagnosing elevated CPU on macOS via MacJet MCP.\n\
                  1) Call get_system_overview with include_thermal true.\n\
                  2) Call list_process_groups with sort=cpu and limit=20.\n\
                  3) If a browser dominates, call list_chrome_tabs.\n\
                  4) Summarize likely causes and next steps for the user."
-                    .to_string()
-            }
-            "memory_pressure_checklist" => {
-                "Use MacJet to assess memory pressure:\n\
+                .to_string(),
+            "memory_pressure_checklist" => "Use MacJet to assess memory pressure:\n\
                  1) get_system_overview — note mem_percent and swap_used_gb.\n\
                  2) list_process_groups sort=mem.\n\
                  3) get_reclaim_candidates for heuristic targets.\n\
                  4) Advise closing heavy apps or tabs before suggesting kill_process."
-                    .to_string()
-            }
-            "safe_kill_workflow" => {
-                "Before kill_process:\n\
+                .to_string(),
+            "safe_kill_workflow" => "Before kill_process:\n\
                  - PIDs below 500 are refused.\n\
                  - The MCP server cannot kill itself.\n\
                  - Clients with elicitation show a human confirmation form.\n\
                  - Every attempt is logged to ~/.macjet/mcp_audit.jsonl.\n\
                  - Prefer SIGTERM; escalate only with explicit user request."
-                    .to_string()
-            }
+                .to_string(),
             _ => {
-                return std::future::ready(Err(McpError::invalid_params(
-                    "Unknown prompt",
-                    None,
-                )));
+                return std::future::ready(Err(McpError::invalid_params("Unknown prompt", None)));
             }
         };
-        std::future::ready(Ok(
-            GetPromptResult::new(vec![PromptMessage::new_text(
-                PromptMessageRole::User,
-                body,
-            )])
-            .with_description(name),
-        ))
+        std::future::ready(Ok(GetPromptResult::new(vec![PromptMessage::new_text(
+            PromptMessageRole::User,
+            body,
+        )])
+        .with_description(name)))
     }
 
     fn complete(
@@ -497,7 +576,9 @@ impl ServerHandler for MacJetServer {
         _context: RequestContext<RoleServer>,
     ) -> impl std::future::Future<Output = Result<CompleteResult, McpError>> + Send + '_ {
         let values = match &request.r#ref {
-            Reference::Prompt(p) if p.name == "list_process_groups" && request.argument.name == "sort" => {
+            Reference::Prompt(p)
+                if p.name == "list_process_groups" && request.argument.name == "sort" =>
+            {
                 vec!["cpu".into(), "mem".into(), "name".into()]
             }
             Reference::Resource(r) if r.uri.starts_with("macjet://") => {
@@ -540,8 +621,7 @@ impl MacJetServer {
 
 fn res(uri: &str, title: &str) -> Annotated<RawResource> {
     Annotated {
-        raw: RawResource::new(uri, title)
-            .with_mime_type("application/json"),
+        raw: RawResource::new(uri, title).with_mime_type("application/json"),
         annotations: None,
     }
 }
@@ -645,7 +725,8 @@ async fn dispatch_tool(
             json_ok!(serde_json::to_string(&serde_json::json!({
                 "meta": snap.meta,
                 "data": { "log_text": text }
-            })).unwrap_or_default());
+            }))
+            .unwrap_or_default());
         }
         "explain_system_heat" => {
             let focus = args
@@ -672,6 +753,21 @@ async fn dispatch_tool(
             };
             json_ok!(serde_json::to_string(&wrap(&snap, stats)).unwrap_or_default());
         }
+        "get_disk_summary" => {
+            let db = arg_opt_path(args, "db_path");
+            json_ok!(json_disk_summary(&snap, db));
+        }
+        "list_disk_duplicates" => {
+            let db = arg_opt_path(args, "db_path");
+            let limit = arg_u64(args, "limit", 50);
+            let min_size = arg_u64(args, "min_size", 0);
+            let only = arg_bool(args, "only_reclaimable", false);
+            json_ok!(json_disk_duplicates(&snap, db, limit, min_size, only));
+        }
+        "suggest_disk_cleanup" => {
+            let db = arg_opt_path(args, "db_path");
+            json_ok!(json_suggest_disk_cleanup(&snap, db));
+        }
         "kill_process" => {
             if server.readonly {
                 return Ok(CallToolResult::error(vec![Content::text(
@@ -697,7 +793,10 @@ async fn dispatch_tool(
                 pid, reason
             );
             let proceed = match peer
-                .elicit_with_timeout::<KillProcessHumanConfirm>(msg, Some(std::time::Duration::from_secs(120)))
+                .elicit_with_timeout::<KillProcessHumanConfirm>(
+                    msg,
+                    Some(std::time::Duration::from_secs(120)),
+                )
                 .await
             {
                 Ok(Some(c)) => c.confirm_terminate,
@@ -746,13 +845,44 @@ async fn dispatch_tool(
             match crate::mcp::safety::send_signal(pid, 15, reason, "rmcp", "req") {
                 Ok(audit) => {
                     server.cache.invalidate(None).await;
-                    let text = format!(
-                        "{{\"success\": true, \"audit_id\": \"{}\"}}",
-                        audit
-                    );
+                    let text = format!("{{\"success\": true, \"audit_id\": \"{}\"}}", audit);
                     Ok(CallToolResult::success(vec![Content::text(text)]))
                 }
                 Err(e) => Ok(CallToolResult::error(vec![Content::text(e)])),
+            }
+        }
+        "trash_disk_paths" => {
+            if server.readonly {
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string(&McpErrorDetail {
+                        code: "readonly".into(),
+                        message: "MACJET_MCP_READONLY is set".into(),
+                        pid: None,
+                    })
+                    .unwrap_or_default(),
+                )]));
+            }
+            let Some(arr) = args.and_then(|a| a.get("paths")).and_then(|v| v.as_array()) else {
+                json_ok!(err_json("bad_args", "paths array required"));
+            };
+            let paths: Vec<String> = arr
+                .iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect();
+            let db = arg_opt_path(args, "db_path");
+            match trash_paths_mcp(&paths, db) {
+                Ok(n) => {
+                    audit_disk_trash(&paths, true, "");
+                    json_ok!(serde_json::to_string(&wrap(
+                        &snap,
+                        serde_json::json!({ "trashed": n, "paths": paths })
+                    ))
+                    .unwrap_or_default());
+                }
+                Err(e) => {
+                    audit_disk_trash(&paths, false, &e);
+                    json_ok!(err_json("trash_failed", &e));
+                }
             }
         }
         _ => Err(McpError::method_not_found::<CallToolRequestMethod>()),
@@ -763,13 +893,21 @@ fn err_json(code: &str, msg: &str) -> String {
     serde_json::json!({ "error": { "code": code, "message": msg } }).to_string()
 }
 
-fn arg_bool(args: Option<&serde_json::Map<String, serde_json::Value>>, key: &str, def: bool) -> bool {
+fn arg_bool(
+    args: Option<&serde_json::Map<String, serde_json::Value>>,
+    key: &str,
+    def: bool,
+) -> bool {
     args.and_then(|a| a.get(key))
         .and_then(|v| v.as_bool())
         .unwrap_or(def)
 }
 
-fn arg_str(args: Option<&serde_json::Map<String, serde_json::Value>>, key: &str, def: &str) -> String {
+fn arg_str(
+    args: Option<&serde_json::Map<String, serde_json::Value>>,
+    key: &str,
+    def: &str,
+) -> String {
     args.and_then(|a| a.get(key))
         .and_then(|v| v.as_str())
         .map(String::from)
@@ -780,6 +918,16 @@ fn arg_u64(args: Option<&serde_json::Map<String, serde_json::Value>>, key: &str,
     args.and_then(|a| a.get(key))
         .and_then(|v| v.as_u64())
         .unwrap_or(def)
+}
+
+fn arg_opt_path(
+    args: Option<&serde_json::Map<String, serde_json::Value>>,
+    key: &str,
+) -> Option<std::path::PathBuf> {
+    args.and_then(|a| a.get(key))
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(std::path::PathBuf::from)
 }
 
 pub async fn run_mcp_server(refresh_secs: u64, ml_enabled: bool) {
