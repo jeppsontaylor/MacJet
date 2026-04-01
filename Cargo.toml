@@ -28,7 +28,7 @@ smol_str = "0.3"         # Zero-allocation strings for process names
 
 # CLI
 clap = { version = "4", features = ["derive"] }
-indicatif = "0.17"
+indicatif = "0.18"
 
 # Logging
 tracing = "0.1"
