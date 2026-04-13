@@ -15,7 +15,7 @@ tokio = { version = "1", features = ["rt", "time", "macros", "net", "process", "
 tokio-util = "0.7.18"
 
 # System info
-sysinfo = "0.33"
+sysinfo = "0.38"
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
