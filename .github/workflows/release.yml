@@ -31,7 +31,7 @@ jobs:
           tar -czvf macjet-macos-universal.tar.gz macjet
 
       - name: Upload Release Asset
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           files: macjet-macos-universal.tar.gz
         env:
